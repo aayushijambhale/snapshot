@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, getDoc, updateDoc, deleteDoc } from '../lib/db';
+import { db } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
 import { ArrowLeft, Save, Trash2, Shield, Globe, Lock, Settings, Loader2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';

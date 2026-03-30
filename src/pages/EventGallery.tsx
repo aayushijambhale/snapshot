@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc, writeBatch, increment, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc, writeBatch, increment, setDoc, addDoc, serverTimestamp } from '../lib/db';
+import { db } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
 import { Camera, Search, Share2, Upload, Grid, ArrowLeft, Download, Trash2, Tag, User, Filter, X as CloseIcon, Settings, CheckSquare, Square, AlertTriangle } from 'lucide-react';
@@ -339,7 +339,6 @@ export function EventGallery() {
                   src={photo.url}
                   alt={photo.caption || "Event photo"}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
                 />
                 
                 {isSelectMode && (
@@ -443,7 +442,6 @@ export function EventGallery() {
                   src={selectedPhoto.url}
                   alt={selectedPhoto.caption || "Event photo"}
                   className="w-full h-full object-contain"
-                  referrerPolicy="no-referrer"
                 />
                 <button
                   onClick={() => setSelectedPhoto(null)}

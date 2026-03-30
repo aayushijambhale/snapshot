@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc } from '../lib/db';
+import { db } from '../lib/db';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Calendar as CalendarIcon, ArrowRight, QrCode, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
+import { createDriveFolder } from '../lib/drive';
 
 export function Home() {
   const { user, login } = useAuth();
@@ -13,6 +14,7 @@ export function Home() {
   const [events, setEvents] = useState<any[]>([]);
   const [isCreating, setIsCreating] = useState(false);
   const [eventName, setEventName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const q = query(collection(db, 'events'), orderBy('createdAt', 'desc'));
@@ -28,32 +30,49 @@ export function Home() {
       login();
       return;
     }
-    if (!eventName.trim()) return;
+    if (!eventName.trim() || isSubmitting) return;
 
+    setIsSubmitting(true);
     try {
+      // 1. Create Google Drive Folder
+      toast.loading('Creating Google Drive folder...', { id: 'create-event' });
+      let folderId = '';
+      try {
+        folderId = await createDriveFolder(eventName.trim());
+      } catch (driveError: any) {
+        console.error('Google Drive Folder Error:', driveError);
+        toast.error(driveError.message || 'Failed to create Drive folder', { id: 'create-event' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Add to local database
       const docRef = await addDoc(collection(db, 'events'), {
-        name: eventName,
+        name: eventName.trim(),
         createdAt: serverTimestamp(),
         createdBy: user.uid,
         creatorName: user.displayName,
+        driveFolderId: folderId,
       });
 
-      // Record activity
+      // 3. Record activity
       await addDoc(collection(db, 'activity'), {
         userId: user.uid,
         type: 'create_event',
-        description: `Created event "${eventName}"`,
+        description: `Created event "${eventName}" with Google Drive storage`,
         timestamp: serverTimestamp(),
         eventId: docRef.id
       });
 
-      toast.success('Event created successfully!');
+      toast.success('Event created and Drive folder linked!', { id: 'create-event' });
       setEventName('');
       setIsCreating(false);
       navigate(`/event/${docRef.id}`);
     } catch (error) {
       console.error('Error creating event:', error);
-      toast.error('Failed to create event');
+      toast.error('Failed to create event', { id: 'create-event' });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 

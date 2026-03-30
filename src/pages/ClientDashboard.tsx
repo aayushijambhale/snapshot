@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { collection, query, where, getDocs, orderBy, limit, collectionGroup, getCountFromServer, doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase';
+import { collection, query, where, getDocs, orderBy, limit, collectionGroup, getCountFromServer, doc, getDoc } from '../lib/db';
+import { db } from '../lib/db';
 import { Link, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, Camera, Search, User, ArrowRight, Grid, Clock, Sparkles, Loader2, Plus, Download, Filter, Calendar } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';

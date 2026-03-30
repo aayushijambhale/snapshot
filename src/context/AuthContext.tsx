@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, updateProfile as firebaseUpdateProfile } from 'firebase/auth';
-import { auth } from '../firebase';
+import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, updateProfile as mockUpdateProfile, auth } from '../lib/auth';
 
 interface AuthContextType {
   user: User | null;
@@ -25,22 +24,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await signInWithPopup();
   };
 
   const logout = async () => {
-    await signOut(auth);
+    await signOut();
   };
 
   const updateProfile = async (displayName: string, photoURL?: string) => {
     if (!auth.currentUser) return;
-    await firebaseUpdateProfile(auth.currentUser, { displayName, photoURL });
-    setUser({ ...auth.currentUser }); // Trigger re-render
+    await mockUpdateProfile(auth.currentUser, { displayName, photoURL });
   };
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, updateProfile }}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 }
