@@ -20,6 +20,8 @@
         "id": { "type": "string", "description": "Unique photo ID" },
         "eventId": { "type": "string", "description": "ID of the event this photo belongs to" },
         "url": { "type": "string", "description": "Base64 or URL of the photo" },
+        "caption": { "type": "string", "description": "Optional caption for the photo" },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Optional tags for the photo" },
         "uploadedAt": { "type": "string", "format": "date-time", "description": "Upload timestamp" },
         "uploadedBy": { "type": "string", "description": "User ID of the photographer" }
       },

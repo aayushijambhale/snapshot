@@ -1,5 +1,5 @@
 {
   "name": "SnapSearch: Real-Time Event Photo Sharing",
-  "description": "A real-time event photo sharing system with QR code access and AI-powered face search.",
+  "description": "A real-time event photo sharing system with QR code access, AI-powered face search (multiple selfies), metadata support, and image compression.",
   "requestFramePermissions": ["camera"]
 }

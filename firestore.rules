@@ -9,6 +9,10 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
+    function isEventCreator(eventId) {
+      return isAuthenticated() && get(/databases/$(database)/documents/events/$(eventId)).data.createdBy == request.auth.uid;
+    }
+
     // Events
     match /events/{eventId} {
       allow read: if true; // Publicly readable for gallery access
@@ -19,11 +23,13 @@ service cloud.firestore {
       match /photos/{photoId} {
         allow read: if true;
         allow create: if isAuthenticated();
-        allow update, delete: if isOwner(resource.data.uploadedBy);
+        // Allow delete if photographer OR event creator
+        allow delete: if isOwner(resource.data.uploadedBy) || isEventCreator(eventId);
+        allow update: if isOwner(resource.data.uploadedBy);
       }
     }
     
-    // Users collection for profiles if needed
+    // Users collection for profiles
     match /users/{userId} {
       allow read: if true;
       allow write: if isOwner(userId);

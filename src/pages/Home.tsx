@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar as CalendarIcon, ArrowRight, QrCode } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, ArrowRight, QrCode, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner';
 
@@ -44,6 +44,24 @@ export function Home() {
     } catch (error) {
       console.error('Error creating event:', error);
       toast.error('Failed to create event');
+    }
+  };
+
+  const handleDeleteEvent = async (e: React.MouseEvent, eventId: string, createdBy: string) => {
+    e.stopPropagation();
+    if (user?.uid !== createdBy) {
+      toast.error('Only the creator can delete this event');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this event and all its photos?')) return;
+
+    try {
+      await deleteDoc(doc(db, 'events', eventId));
+      toast.success('Event deleted');
+    } catch (error) {
+      console.error('Delete error:', error);
+      toast.error('Failed to delete event');
     }
   };
 
@@ -125,9 +143,19 @@ export function Home() {
                   <div className="p-3 bg-orange-50 rounded-2xl">
                     <QrCode className="w-6 h-6 text-orange-500" />
                   </div>
-                  <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest">
-                    {event.id.slice(0, 8)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {user?.uid === event.createdBy && (
+                      <button
+                        onClick={(e) => handleDeleteEvent(e, event.id, event.createdBy)}
+                        className="p-2 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    <span className="text-xs font-mono text-neutral-400 uppercase tracking-widest">
+                      {event.id.slice(0, 8)}
+                    </span>
+                  </div>
                 </div>
                 <div>
                   <h3 className="text-xl font-bold group-hover:text-orange-500 transition-colors">
