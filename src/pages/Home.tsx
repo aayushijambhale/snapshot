@@ -37,6 +37,16 @@ export function Home() {
         createdBy: user.uid,
         creatorName: user.displayName,
       });
+
+      // Record activity
+      await addDoc(collection(db, 'activity'), {
+        userId: user.uid,
+        type: 'create_event',
+        description: `Created event "${eventName}"`,
+        timestamp: serverTimestamp(),
+        eventId: docRef.id
+      });
+
       toast.success('Event created successfully!');
       setEventName('');
       setIsCreating(false);

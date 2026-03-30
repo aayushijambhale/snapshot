@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc, writeBatch, increment, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
@@ -106,13 +106,34 @@ export function EventGallery() {
 
   const shareUrl = `${window.location.origin}/event/${eventId}`;
 
-  const handleDownload = (url: string, id: string) => {
+  const handleDownload = async (url: string, id: string) => {
     const link = document.createElement('a');
     link.href = url;
     link.download = `photo-${id}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    
+    // Increment download stat if user is logged in
+    if (user) {
+      try {
+        await setDoc(doc(db, 'user_stats', user.uid), {
+          totalDownloads: increment(1)
+        }, { merge: true });
+
+        // Record activity
+        await addDoc(collection(db, 'activity'), {
+          userId: user.uid,
+          type: 'download',
+          description: `Downloaded a photo from "${event?.name || 'event'}"`,
+          timestamp: serverTimestamp(),
+          eventId: eventId,
+          photoId: id
+        });
+      } catch (error) {
+        console.error('Error updating download stats:', error);
+      }
+    }
   };
 
   const handleBulkDownload = async () => {
@@ -131,6 +152,26 @@ export function EventGallery() {
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `${event?.name || 'event'}-photos.zip`);
       toast.success('Bulk download started!');
+      
+      // Increment download stat
+      if (user) {
+        try {
+          await setDoc(doc(db, 'user_stats', user.uid), {
+            totalDownloads: increment(filteredPhotos.length)
+          }, { merge: true });
+
+          // Record activity
+          await addDoc(collection(db, 'activity'), {
+            userId: user.uid,
+            type: 'download',
+            description: `Bulk downloaded ${filteredPhotos.length} photos from "${event?.name || 'event'}"`,
+            timestamp: serverTimestamp(),
+            eventId: eventId
+          });
+        } catch (error) {
+          console.error('Error updating download stats:', error);
+        }
+      }
     } catch (error) {
       console.error('Bulk download error:', error);
       toast.error('Failed to create zip file');

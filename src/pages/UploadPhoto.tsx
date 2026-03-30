@@ -116,6 +116,17 @@ export function UploadPhoto() {
         setOverallProgress(Math.round(((i + 1) / photoData.length) * 100));
       }
 
+      // Record activity
+      if (successCount > 0) {
+        await addDoc(collection(db, 'activity'), {
+          userId: user.uid,
+          type: 'upload',
+          description: `Uploaded ${successCount} photos to event`,
+          timestamp: serverTimestamp(),
+          eventId: eventId
+        });
+      }
+
       toast.success(`Successfully uploaded ${successCount} photos!`);
       setTimeout(() => navigate(`/event/${eventId}`), 1500);
     } catch (error) {

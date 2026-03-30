@@ -8,10 +8,13 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 
 export function Profile() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateProfile } = useAuth();
   const navigate = useNavigate();
   const [myEvents, setMyEvents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState(user?.displayName || '');
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -38,6 +41,24 @@ export function Profile() {
 
     fetchMyEvents();
   }, [user, navigate]);
+
+  const handleUpdateProfile = async () => {
+    if (!newName.trim()) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+    setUpdating(true);
+    try {
+      await updateProfile(newName.trim());
+      toast.success('Profile updated');
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Update profile error:', error);
+      toast.error('Failed to update profile');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -109,7 +130,7 @@ export function Profile() {
 
             <div className="pt-8 border-t border-neutral-50 space-y-3">
               <button
-                onClick={() => toast.info('Profile editing coming soon!')}
+                onClick={() => setIsEditing(true)}
                 className="w-full py-4 bg-neutral-100 text-neutral-600 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-200 transition-all"
               >
                 <Settings className="w-5 h-5" /> Edit Profile
@@ -211,6 +232,61 @@ export function Profile() {
           )}
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      <AnimatePresence>
+        {isEditing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setIsEditing(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white p-8 rounded-[3rem] max-w-sm w-full space-y-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="space-y-2 text-center">
+                <h3 className="text-2xl font-bold">Edit Profile</h3>
+                <p className="text-neutral-500">Update your public information</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider ml-1">Display Name</label>
+                  <input
+                    type="text"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    className="w-full px-6 py-4 bg-neutral-50 border border-neutral-100 rounded-2xl focus:ring-2 focus:ring-orange-500 focus:bg-white transition-all outline-none"
+                    placeholder="Enter your name"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 py-4 bg-neutral-100 text-neutral-600 rounded-full font-bold hover:bg-neutral-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleUpdateProfile}
+                  disabled={updating}
+                  className="flex-1 py-4 bg-black text-white rounded-full font-bold hover:bg-neutral-800 transition-all shadow-xl disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {updating ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

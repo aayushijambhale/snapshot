@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, getDocs, setDoc, doc, increment, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useAuth } from '../context/AuthContext';
 import { findMatchingPhotos } from '../lib/gemini';
 import { Camera, Upload, ArrowLeft, Search, Sparkles, UserCheck, Grid, Download, X, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -11,6 +12,7 @@ import { saveAs } from 'file-saver';
 
 export function FaceSearch() {
   const { eventId } = useParams();
+  const { user } = useAuth();
   const [selfies, setSelfies] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
@@ -64,6 +66,26 @@ export function FaceSearch() {
       
       if (matchedPhotos.length > 0) {
         toast.success(`Found ${matchedPhotos.length} matching photos!`);
+        
+        // Increment AI Matches stat
+        if (user) {
+          try {
+            await setDoc(doc(db, 'user_stats', user.uid), {
+              totalAiMatches: increment(matchedPhotos.length)
+            }, { merge: true });
+
+            // Record activity
+            await addDoc(collection(db, 'activity'), {
+              userId: user.uid,
+              type: 'match',
+              description: `Found ${matchedPhotos.length} matches in event "${eventId}"`,
+              timestamp: serverTimestamp(),
+              eventId: eventId
+            });
+          } catch (error) {
+            console.error('Error updating AI match stats:', error);
+          }
+        }
       } else {
         toast.info('No matching photos found. Try more selfies from different angles!');
       }
@@ -75,13 +97,34 @@ export function FaceSearch() {
     }
   };
 
-  const handleDownload = (url: string, id: string) => {
+  const handleDownload = async (url: string, id: string) => {
     const link = document.createElement('a');
     link.href = url;
     link.download = `my-photo-${id}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+
+    // Increment download stat
+    if (user) {
+      try {
+        await setDoc(doc(db, 'user_stats', user.uid), {
+          totalDownloads: increment(1)
+        }, { merge: true });
+
+        // Record activity
+        await addDoc(collection(db, 'activity'), {
+          userId: user.uid,
+          type: 'download',
+          description: `Downloaded a matched photo from event "${eventId}"`,
+          timestamp: serverTimestamp(),
+          eventId: eventId,
+          photoId: id
+        });
+      } catch (error) {
+        console.error('Error updating download stats:', error);
+      }
+    }
   };
 
   const handleDownloadAllMatches = async () => {
@@ -100,6 +143,26 @@ export function FaceSearch() {
       const content = await zip.generateAsync({ type: 'blob' });
       saveAs(content, `my-matched-photos.zip`);
       toast.success('Download started!');
+
+      // Increment download stat
+      if (user) {
+        try {
+          await setDoc(doc(db, 'user_stats', user.uid), {
+            totalDownloads: increment(results.length)
+          }, { merge: true });
+
+          // Record activity
+          await addDoc(collection(db, 'activity'), {
+            userId: user.uid,
+            type: 'download',
+            description: `Bulk downloaded ${results.length} matched photos from event "${eventId}"`,
+            timestamp: serverTimestamp(),
+            eventId: eventId
+          });
+        } catch (error) {
+          console.error('Error updating download stats:', error);
+        }
+      }
     } catch (error) {
       console.error('Download error:', error);
       toast.error('Failed to create zip file');
