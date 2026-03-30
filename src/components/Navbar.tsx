@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Camera, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Camera, LogIn, LogOut, User as UserIcon, LayoutDashboard, UserCircle } from 'lucide-react';
 
 export function Navbar() {
   const { user, login, logout } = useAuth();
@@ -16,14 +16,18 @@ export function Navbar() {
         <div className="flex items-center gap-4">
           {user ? (
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm font-medium">
+              <Link to="/client" className="hidden md:flex items-center gap-2 text-sm font-bold text-neutral-600 hover:text-orange-500 transition-colors">
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </Link>
+              <Link to="/profile" className="flex items-center gap-2 text-sm font-medium hover:text-orange-500 transition-colors">
                 {user.photoURL ? (
-                  <img src={user.photoURL} alt={user.displayName || ''} className="w-8 h-8 rounded-full" />
+                  <img src={user.photoURL} alt={user.displayName || ''} className="w-8 h-8 rounded-full border border-neutral-100" />
                 ) : (
-                  <UserIcon className="w-8 h-8 p-1 bg-neutral-100 rounded-full" />
+                  <UserCircle className="w-8 h-8 p-1 bg-neutral-100 rounded-full" />
                 )}
                 <span className="hidden sm:inline">{user.displayName}</span>
-              </div>
+              </Link>
               <button
                 onClick={logout}
                 className="p-2 hover:bg-neutral-100 rounded-full transition-colors"

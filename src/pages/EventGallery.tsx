@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
-import { Camera, Search, Share2, Upload, Grid, ArrowLeft, Download, Trash2, Tag, User, Info } from 'lucide-react';
+import { Camera, Search, Share2, Upload, Grid, ArrowLeft, Download, Trash2, Tag, User, Filter, X as CloseIcon, Settings, CheckSquare, Square, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
@@ -20,6 +20,11 @@ export function EventGallery() {
   const [showQR, setShowQR] = useState(false);
   const [downloadingAll, setDownloadingAll] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<any>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedPhotoIds, setSelectedPhotoIds] = useState<string[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -46,6 +51,59 @@ export function EventGallery() {
     return () => unsubscribe();
   }, [eventId, navigate]);
 
+  // Extract unique tags
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    photos.forEach(p => {
+      if (p.tags && Array.isArray(p.tags)) {
+        p.tags.forEach((t: string) => tags.add(t));
+      }
+    });
+    return Array.from(tags).sort();
+  }, [photos]);
+
+  // Filter photos
+  const filteredPhotos = useMemo(() => {
+    if (selectedTags.length === 0) return photos;
+    return photos.filter(p => 
+      p.tags && Array.isArray(p.tags) && selectedTags.every(t => p.tags.includes(t))
+    );
+  }, [photos, selectedTags]);
+
+  const toggleTag = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const togglePhotoSelection = (photoId: string) => {
+    setSelectedPhotoIds(prev => 
+      prev.includes(photoId) ? prev.filter(id => id !== photoId) : [...prev, photoId]
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedPhotoIds.length === 0) return;
+    setDeletingBulk(true);
+    const batch = writeBatch(db);
+    
+    try {
+      selectedPhotoIds.forEach(id => {
+        batch.delete(doc(db, 'events', eventId!, 'photos', id));
+      });
+      await batch.commit();
+      toast.success(`Deleted ${selectedPhotoIds.length} photos`);
+      setSelectedPhotoIds([]);
+      setIsSelectMode(false);
+      setShowDeleteConfirm(false);
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      toast.error('Failed to delete photos');
+    } finally {
+      setDeletingBulk(false);
+    }
+  };
+
   const shareUrl = `${window.location.origin}/event/${eventId}`;
 
   const handleDownload = (url: string, id: string) => {
@@ -58,20 +116,20 @@ export function EventGallery() {
   };
 
   const handleBulkDownload = async () => {
-    if (photos.length === 0) return;
+    if (filteredPhotos.length === 0) return;
     setDownloadingAll(true);
     const zip = new JSZip();
     const folder = zip.folder(`${event?.name || 'event'}-photos`);
 
     try {
-      for (let i = 0; i < photos.length; i++) {
-        const photo = photos[i];
+      for (let i = 0; i < filteredPhotos.length; i++) {
+        const photo = filteredPhotos[i];
         const base64Data = photo.url.split(',')[1];
         folder?.file(`photo-${photo.id}.jpg`, base64Data, { base64: true });
       }
 
       const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, `${event?.name || 'event'}-all-photos.zip`);
+      saveAs(content, `${event?.name || 'event'}-photos.zip`);
       toast.success('Bulk download started!');
     } catch (error) {
       console.error('Bulk download error:', error);
@@ -111,7 +169,7 @@ export function EventGallery() {
   }
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-8 pb-32">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
         <div className="space-y-1">
           <Link to="/" className="text-sm text-neutral-500 hover:text-orange-500 flex items-center gap-1 mb-2">
@@ -128,6 +186,34 @@ export function EventGallery() {
         </div>
         
         <div className="flex flex-wrap gap-2">
+          {user?.uid === event?.createdBy && (
+            <Link
+              to={`/event/${eventId}/settings`}
+              className="flex-1 sm:flex-none px-5 py-3 bg-white border border-neutral-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-50 transition-all shadow-sm active:scale-95"
+            >
+              <Settings className="w-4 h-4" /> Settings
+            </Link>
+          )}
+          <button
+            onClick={() => {
+              setIsSelectMode(!isSelectMode);
+              setSelectedPhotoIds([]);
+            }}
+            className={`flex-1 sm:flex-none px-5 py-3 border rounded-2xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm active:scale-95 ${
+              isSelectMode ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-neutral-200 hover:bg-neutral-50'
+            }`}
+          >
+            {isSelectMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+            {isSelectMode ? 'Cancel Selection' : 'Select'}
+          </button>
+          {isSelectMode && selectedPhotoIds.length > 0 && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="flex-1 sm:flex-none px-5 py-3 bg-red-500 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-red-600 transition-all shadow-lg shadow-red-200 active:scale-95"
+            >
+              <Trash2 className="w-4 h-4" /> Delete ({selectedPhotoIds.length})
+            </button>
+          )}
           <button
             onClick={() => setShowQR(true)}
             className="flex-1 sm:flex-none px-5 py-3 bg-white border border-neutral-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-50 transition-all shadow-sm active:scale-95"
@@ -136,7 +222,7 @@ export function EventGallery() {
           </button>
           <button
             onClick={handleBulkDownload}
-            disabled={downloadingAll || photos.length === 0}
+            disabled={downloadingAll || filteredPhotos.length === 0}
             className="flex-1 sm:flex-none px-5 py-3 bg-white border border-neutral-200 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-neutral-50 transition-all shadow-sm active:scale-95 disabled:opacity-50"
           >
             {downloadingAll ? (
@@ -144,7 +230,7 @@ export function EventGallery() {
             ) : (
               <Download className="w-4 h-4" />
             )}
-            Bulk Download
+            {selectedTags.length > 0 ? 'Download Filtered' : 'Download All'}
           </button>
           <Link
             to={`/event/${eventId}/search`}
@@ -161,50 +247,120 @@ export function EventGallery() {
         </div>
       </div>
 
+      {/* Tag Filtering */}
+      {allTags.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-sm font-bold text-neutral-600">
+            <Filter className="w-4 h-4" /> Filter by Tags
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {allTags.map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                className={`px-4 py-2 rounded-full text-sm font-bold transition-all border ${
+                  selectedTags.includes(tag)
+                    ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-200'
+                    : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+            {selectedTags.length > 0 && (
+              <button
+                onClick={() => setSelectedTags([])}
+                className="px-4 py-2 text-sm font-bold text-red-500 hover:underline"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-        {photos.map((photo, index) => (
-          <motion.div
-            key={photo.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.02 }}
-            className="group relative aspect-square bg-neutral-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer"
-            onClick={() => setSelectedPhoto(photo)}
-          >
-            <img
-              src={photo.url}
-              alt={photo.caption || "Event photo"}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-              {photo.caption && (
-                <p className="text-white text-xs font-medium truncate mb-1">{photo.caption}</p>
-              )}
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] text-white/80 font-mono truncate">
-                  By {photo.photographerName?.split(' ')[0] || 'Photog'}
-                </span>
-                <div className="flex gap-1">
-                  {(user?.uid === photo.uploadedBy || user?.uid === event?.createdBy) && (
+        <AnimatePresence mode="popLayout">
+          {filteredPhotos.map((photo, index) => (
+              <motion.div
+                key={photo.id}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ delay: index * 0.01 }}
+                className={`group relative aspect-square bg-neutral-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all cursor-pointer ring-offset-2 ${
+                  selectedPhotoIds.includes(photo.id) ? 'ring-4 ring-orange-500 scale-95' : ''
+                }`}
+                onClick={() => isSelectMode ? togglePhotoSelection(photo.id) : setSelectedPhoto(photo)}
+              >
+                <img
+                  src={photo.url}
+                  alt={photo.caption || "Event photo"}
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  referrerPolicy="no-referrer"
+                />
+                
+                {isSelectMode && (
+                  <div className="absolute top-3 right-3 z-10">
+                    {selectedPhotoIds.includes(photo.id) ? (
+                      <div className="bg-orange-500 text-white p-1 rounded-full shadow-lg">
+                        <CheckSquare className="w-5 h-5" />
+                      </div>
+                    ) : (
+                      <div className="bg-white/50 backdrop-blur-sm text-white p-1 rounded-full border border-white/20">
+                        <Square className="w-5 h-5" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                {photo.caption && (
+                  <p className="text-white text-xs font-medium truncate mb-1">{photo.caption}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-white/80 font-mono truncate">
+                    By {photo.photographerName?.split(' ')[0] || 'Photog'}
+                  </span>
+                  <div className="flex gap-1">
+                    {(user?.uid === photo.uploadedBy || user?.uid === event?.createdBy) && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); handleDelete(photo.id, photo.uploadedBy); }}
+                        className="p-1.5 bg-red-500/80 rounded-lg text-white hover:bg-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    )}
                     <button 
-                      onClick={(e) => { e.stopPropagation(); handleDelete(photo.id, photo.uploadedBy); }}
-                      className="p-1.5 bg-red-500/80 rounded-lg text-white hover:bg-red-500 transition-colors"
+                      onClick={(e) => { e.stopPropagation(); handleDownload(photo.url, photo.id); }}
+                      className="p-1.5 bg-white/80 rounded-lg text-black hover:bg-white transition-colors"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Download className="w-3 h-3" />
                     </button>
-                  )}
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); handleDownload(photo.url, photo.id); }}
-                    className="p-1.5 bg-white/80 rounded-lg text-black hover:bg-white transition-colors"
-                  >
-                    <Download className="w-3 h-3" />
-                  </button>
+                  </div>
                 </div>
               </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+        {filteredPhotos.length === 0 && photos.length > 0 && (
+          <div className="col-span-full py-24 text-center space-y-4 bg-white rounded-[3rem] border-2 border-dashed border-neutral-100">
+            <div className="p-6 bg-neutral-50 w-fit mx-auto rounded-full">
+              <Filter className="w-10 h-10 text-neutral-300" />
             </div>
-          </motion.div>
-        ))}
+            <div className="space-y-1">
+              <p className="text-xl font-bold text-neutral-500">No photos match your filters</p>
+              <p className="text-neutral-400">Try selecting different tags or clear all filters.</p>
+            </div>
+            <button
+              onClick={() => setSelectedTags([])}
+              className="px-8 py-3 bg-black text-white rounded-full font-bold hover:bg-neutral-800 transition-all shadow-lg active:scale-95"
+            >
+              Clear Filters
+            </button>
+          </div>
+        )}
         {photos.length === 0 && (
           <div className="col-span-full py-24 text-center space-y-4 bg-white rounded-[3rem] border-2 border-dashed border-neutral-100">
             <div className="p-6 bg-neutral-50 w-fit mx-auto rounded-full">
@@ -252,7 +408,7 @@ export function EventGallery() {
                   onClick={() => setSelectedPhoto(null)}
                   className="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <CloseIcon className="w-6 h-6" />
                 </button>
               </div>
 
@@ -290,6 +446,50 @@ export function EventGallery() {
                     </button>
                   )}
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Bulk Delete Confirmation Modal */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[80] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setShowDeleteConfirm(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white p-8 rounded-[3rem] max-w-sm w-full text-center space-y-6 shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 bg-red-50 w-fit mx-auto rounded-full">
+                <AlertTriangle className="w-10 h-10 text-red-500" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-2xl font-bold">Delete {selectedPhotoIds.length} photos?</h3>
+                <p className="text-neutral-500">This action cannot be undone. All selected photos will be permanently removed.</p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="flex-1 py-4 bg-neutral-100 text-neutral-600 rounded-full font-bold hover:bg-neutral-200 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={deletingBulk}
+                  className="flex-1 py-4 bg-red-500 text-white rounded-full font-bold hover:bg-red-600 transition-all shadow-lg shadow-red-200 disabled:opacity-50"
+                >
+                  {deletingBulk ? 'Deleting...' : 'Delete All'}
+                </button>
               </div>
             </motion.div>
           </motion.div>
@@ -338,25 +538,5 @@ export function EventGallery() {
         )}
       </AnimatePresence>
     </div>
-  );
-}
-
-function X(props: any) {
-  return (
-    <svg
-      {...props}
-      xmlns="http://www.w3.org/2000/svg"
-      width="24"
-      height="24"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M18 6 6 18" />
-      <path d="m6 6 12 12" />
-    </svg>
   );
 }

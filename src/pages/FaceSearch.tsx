@@ -3,9 +3,11 @@ import { useParams, Link } from 'react-router-dom';
 import { collection, query, orderBy, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { findMatchingPhotos } from '../lib/gemini';
-import { Camera, Upload, ArrowLeft, Search, Sparkles, UserCheck, Grid, Download, X, Plus } from 'lucide-react';
+import { Camera, Upload, ArrowLeft, Search, Sparkles, UserCheck, Grid, Download, X, Plus, Loader2, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 
 export function FaceSearch() {
   const { eventId } = useParams();
@@ -13,6 +15,7 @@ export function FaceSearch() {
   const [searching, setSearching] = useState(false);
   const [results, setResults] = useState<any[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const [downloadingAll, setDownloadingAll] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSelfieUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,34 +84,51 @@ export function FaceSearch() {
     document.body.removeChild(link);
   };
 
+  const handleDownloadAllMatches = async () => {
+    if (results.length === 0) return;
+    setDownloadingAll(true);
+    const zip = new JSZip();
+    const folder = zip.folder(`my-matched-photos`);
+
+    try {
+      for (let i = 0; i < results.length; i++) {
+        const photo = results[i];
+        const base64Data = photo.url.split(',')[1];
+        folder?.file(`photo-${photo.id}.jpg`, base64Data, { base64: true });
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, `my-matched-photos.zip`);
+      toast.success('Download started!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Failed to create zip file');
+    } finally {
+      setDownloadingAll(false);
+    }
+  };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-12 pb-20">
+    <div className="max-w-6xl mx-auto space-y-12 pb-32">
       <div className="space-y-1 text-center max-w-2xl mx-auto">
         <Link to={`/event/${eventId}`} className="text-sm text-neutral-500 hover:text-orange-500 inline-flex items-center gap-1 mb-4">
           <ArrowLeft className="w-4 h-4" /> Back to Gallery
         </Link>
-        <h1 className="text-4xl font-extrabold tracking-tight">AI Face Search</h1>
+        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">Find Your <span className="text-orange-500">Memories</span></h1>
         <p className="text-neutral-500 text-lg">
-          Upload multiple selfies from different angles to help our AI find you more accurately.
+          Our AI will scan the entire gallery to find every photo you're in.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-        <div className="lg:col-span-4 space-y-8">
-          <div className="bg-white p-8 rounded-[3rem] border border-neutral-100 shadow-xl space-y-8 sticky top-24">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+        {/* Left Column: Selfie Upload */}
+        <div className="lg:col-span-4 space-y-8 lg:sticky lg:top-24">
+          <div className="bg-white p-8 rounded-[3rem] border border-neutral-100 shadow-xl space-y-8">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-xl flex items-center gap-2">
                 <UserCheck className="w-6 h-6 text-orange-500" />
-                Reference Selfies
+                Who are we looking for?
               </h3>
-              {selfies.length > 0 && (
-                <button 
-                  onClick={() => setSelfies([])}
-                  className="text-xs font-bold text-red-500 hover:underline"
-                >
-                  Clear All
-                </button>
-              )}
             </div>
             
             <div className="grid grid-cols-2 gap-3">
@@ -119,14 +139,14 @@ export function FaceSearch() {
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.8 }}
-                    className="relative aspect-square rounded-2xl overflow-hidden border border-neutral-100 group"
+                    className="relative aspect-square rounded-2xl overflow-hidden border border-neutral-100 group shadow-sm"
                   >
                     <img src={selfie} alt="Selfie" className="w-full h-full object-cover" />
                     <button
                       onClick={() => removeSelfie(index)}
-                      className="absolute top-1 right-1 p-1 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1 right-1 p-1.5 bg-black/50 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-3.5 h-3.5" />
                     </button>
                   </motion.div>
                 ))}
@@ -135,7 +155,8 @@ export function FaceSearch() {
               {selfies.length < 4 && (
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square rounded-2xl border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center hover:border-orange-500 hover:bg-orange-50 transition-all group"
+                  className="aspect-square rounded-2xl border-2 border-dashed border-neutral-200 flex flex-col items-center justify-center hover:border-orange-500 hover:bg-orange-50 transition-all group bg-neutral-50/50"
+                  disabled={searching}
                 >
                   <Plus className="w-6 h-6 text-neutral-300 group-hover:text-orange-500 transition-colors" />
                   <span className="text-[10px] font-bold text-neutral-400 group-hover:text-orange-500">Add Selfie</span>
@@ -143,9 +164,9 @@ export function FaceSearch() {
               )}
             </div>
 
-            <div className="space-y-4 pt-4">
-              <p className="text-xs text-neutral-400 text-center">
-                Tip: Use clear photos with good lighting for best results.
+            <div className="space-y-4 pt-4 border-t border-neutral-50">
+              <p className="text-xs text-neutral-400 text-center leading-relaxed">
+                Add up to 4 photos from different angles for the highest matching accuracy.
               </p>
               <button
                 onClick={startSearch}
@@ -157,8 +178,8 @@ export function FaceSearch() {
               >
                 {searching ? (
                   <>
-                    <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    AI is Searching...
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    AI is Scanning...
                   </>
                 ) : (
                   <>
@@ -180,16 +201,26 @@ export function FaceSearch() {
           </div>
         </div>
 
+        {/* Right Column: Results */}
         <div className="lg:col-span-8 space-y-8">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="font-bold text-2xl flex items-center gap-3">
               <Grid className="w-7 h-7 text-orange-500" />
-              Search Results
+              {hasSearched ? 'Your Matched Photos' : 'Search Results'}
             </h3>
             {results.length > 0 && (
-              <span className="px-4 py-1.5 bg-orange-50 text-orange-600 rounded-full text-sm font-bold">
-                {results.length} Matches Found
-              </span>
+              <button
+                onClick={handleDownloadAllMatches}
+                disabled={downloadingAll}
+                className="px-6 py-2.5 bg-orange-50 text-orange-600 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {downloadingAll ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Download All Matches ({results.length})
+              </button>
             )}
           </div>
 
@@ -199,52 +230,65 @@ export function FaceSearch() {
                 <motion.div
                   key={photo.id}
                   layout
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.8 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="group relative aspect-square bg-neutral-100 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl transition-all"
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 260,
+                    damping: 20,
+                    delay: index * 0.05 
+                  }}
+                  className="group relative aspect-square bg-neutral-100 rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all ring-1 ring-neutral-100"
                 >
                   <img
                     src={photo.url}
                     alt="Matched photo"
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     referrerPolicy="no-referrer"
                   />
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <button 
-                      onClick={() => handleDownload(photo.url, photo.id)}
-                      className="p-3 bg-white rounded-2xl text-black hover:scale-110 transition-transform shadow-xl"
-                    >
-                      <Download className="w-6 h-6" />
-                    </button>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-6">
+                    <div className="flex justify-between items-center">
+                      <div className="space-y-1">
+                        <p className="text-white text-xs font-bold flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-green-400" /> AI Match
+                        </p>
+                        <p className="text-white/60 text-[10px] font-mono">ID: {photo.id.slice(0, 8)}</p>
+                      </div>
+                      <button 
+                        onClick={() => handleDownload(photo.url, photo.id)}
+                        className="p-3 bg-white rounded-2xl text-black hover:scale-110 transition-transform shadow-xl active:scale-95"
+                      >
+                        <Download className="w-5 h-5" />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
             </AnimatePresence>
 
             {!searching && hasSearched && results.length === 0 && (
-              <div className="col-span-full py-32 text-center space-y-6 bg-white rounded-[3rem] border-2 border-dashed border-neutral-100 shadow-inner">
-                <div className="p-6 bg-neutral-50 w-fit mx-auto rounded-full">
-                  <Search className="w-12 h-12 text-neutral-200" />
+              <div className="col-span-full py-32 text-center space-y-6 bg-white rounded-[4rem] border-2 border-dashed border-neutral-100 shadow-inner">
+                <div className="p-8 bg-neutral-50 w-fit mx-auto rounded-full">
+                  <Search className="w-16 h-16 text-neutral-200" />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-2xl font-bold text-neutral-500">No matches found</p>
-                  <p className="text-neutral-400 max-w-xs mx-auto">
-                    We couldn't find you in the first 20 photos. Try adding more selfies or check back later!
+                  <p className="text-3xl font-bold text-neutral-500 tracking-tight">No matches found</p>
+                  <p className="text-neutral-400 max-w-xs mx-auto text-lg">
+                    We couldn't find you in the gallery. Try adding more selfies or check back later!
                   </p>
                 </div>
               </div>
             )}
 
             {!hasSearched && (
-              <div className="col-span-full py-32 text-center space-y-6 bg-white rounded-[3rem] border-2 border-dashed border-neutral-100 opacity-40">
-                <div className="p-6 bg-neutral-50 w-fit mx-auto rounded-full">
-                  <Sparkles className="w-12 h-12 text-neutral-200" />
+              <div className="col-span-full py-32 text-center space-y-6 bg-white rounded-[4rem] border-2 border-dashed border-neutral-100 opacity-40">
+                <div className="p-8 bg-neutral-50 w-fit mx-auto rounded-full">
+                  <Sparkles className="w-16 h-16 text-neutral-200" />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-2xl font-bold text-neutral-500">Ready to search</p>
-                  <p className="text-neutral-400">Upload your selfies to start the AI search.</p>
+                  <p className="text-3xl font-bold text-neutral-500 tracking-tight">Ready to scan</p>
+                  <p className="text-neutral-400 text-lg">Upload your selfies to start the AI search.</p>
                 </div>
               </div>
             )}

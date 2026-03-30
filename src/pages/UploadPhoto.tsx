@@ -4,16 +4,19 @@ import { useDropzone } from 'react-dropzone';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { Upload, X, Image as ImageIcon, ArrowLeft, CheckCircle2, Tag, Type } from 'lucide-react';
+import { Upload, X, Image as ImageIcon, ArrowLeft, CheckCircle2, Tag, Type, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
 
 interface PhotoMetadata {
+  id: string;
   file: File;
   preview: string;
   caption: string;
   tags: string;
+  status: 'pending' | 'compressing' | 'uploading' | 'done' | 'error';
+  progress: number;
 }
 
 export function UploadPhoto() {
@@ -22,14 +25,17 @@ export function UploadPhoto() {
   const { user, login } = useAuth();
   const [photoData, setPhotoData] = useState<PhotoMetadata[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [overallProgress, setOverallProgress] = useState(0);
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newPhotos = acceptedFiles.map(file => ({
+      id: Math.random().toString(36).substr(2, 9),
       file,
       preview: URL.createObjectURL(file),
       caption: '',
-      tags: ''
+      tags: '',
+      status: 'pending' as const,
+      progress: 0
     }));
     setPhotoData(prev => [...prev, ...newPhotos]);
   }, []);
@@ -39,16 +45,12 @@ export function UploadPhoto() {
     accept: { 'image/*': [] }
   } as any);
 
-  const removePhoto = (index: number) => {
-    setPhotoData(prev => prev.filter((_, i) => i !== index));
+  const removePhoto = (id: string) => {
+    setPhotoData(prev => prev.filter(p => p.id !== id));
   };
 
-  const updateMetadata = (index: number, field: 'caption' | 'tags', value: string) => {
-    setPhotoData(prev => {
-      const next = [...prev];
-      next[index] = { ...next[index], [field]: value };
-      return next;
-    });
+  const updateMetadata = (id: string, field: 'caption' | 'tags', value: string) => {
+    setPhotoData(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
   };
 
   const handleUpload = async () => {
@@ -64,16 +66,31 @@ export function UploadPhoto() {
 
     try {
       for (let i = 0; i < photoData.length; i++) {
-        const { file, caption, tags } = photoData[i];
+        const photo = photoData[i];
         
+        // Update status to compressing
+        setPhotoData(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'compressing', progress: 20 } : p));
+
         // 1. Image Compression
         const options = {
-          maxSizeMB: 0.8, // Firestore limit is 1MB, so we aim for 0.8MB
+          maxSizeMB: 0.8,
           maxWidthOrHeight: 1920,
-          useWebWorker: true
+          useWebWorker: true,
+          onProgress: (p: number) => {
+            setPhotoData(prev => prev.map(item => item.id === photo.id ? { ...item, progress: 20 + (p * 0.3) } : item));
+          }
         };
         
-        const compressedFile = await imageCompression(file, options);
+        let compressedFile;
+        try {
+          compressedFile = await imageCompression(photo.file, options);
+        } catch (e) {
+          setPhotoData(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'error' } : p));
+          continue;
+        }
+
+        // Update status to uploading
+        setPhotoData(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'uploading', progress: 60 } : p));
         
         // 2. Convert to base64
         const base64 = await new Promise<string>((resolve) => {
@@ -85,20 +102,22 @@ export function UploadPhoto() {
         // 3. Save to Firestore
         await addDoc(collection(db, 'events', eventId!, 'photos'), {
           url: base64,
-          caption: caption.trim(),
-          tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+          caption: photo.caption.trim(),
+          tags: photo.tags.split(',').map(t => t.trim()).filter(Boolean),
           uploadedAt: serverTimestamp(),
           uploadedBy: user.uid,
           photographerName: user.displayName,
           eventId: eventId
         });
         
+        // Update status to done
+        setPhotoData(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'done', progress: 100 } : p));
         successCount++;
-        setProgress(Math.round(((i + 1) / photoData.length) * 100));
+        setOverallProgress(Math.round(((i + 1) / photoData.length) * 100));
       }
 
       toast.success(`Successfully uploaded ${successCount} photos!`);
-      navigate(`/event/${eventId}`);
+      setTimeout(() => navigate(`/event/${eventId}`), 1500);
     } catch (error) {
       console.error('Upload error:', error);
       toast.error('Failed to upload some photos');
@@ -108,7 +127,7 @@ export function UploadPhoto() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-20">
+    <div className="max-w-4xl mx-auto space-y-8 pb-32">
       <div className="space-y-1">
         <Link to={`/event/${eventId}`} className="text-sm text-neutral-500 hover:text-orange-500 flex items-center gap-1 mb-2">
           <ArrowLeft className="w-4 h-4" /> Back to Gallery
@@ -147,50 +166,77 @@ export function UploadPhoto() {
               <ImageIcon className="w-5 h-5 text-orange-500" />
               Selected Photos ({photoData.length})
             </h3>
-            <button
-              onClick={() => setPhotoData([])}
-              className="text-sm text-red-500 font-bold hover:underline"
-              disabled={uploading}
-            >
-              Clear All
-            </button>
+            {!uploading && (
+              <button
+                onClick={() => setPhotoData([])}
+                className="text-sm text-red-500 font-bold hover:underline"
+              >
+                Clear All
+              </button>
+            )}
           </div>
 
           <div className="space-y-4">
             <AnimatePresence>
-              {photoData.map((data, index) => (
+              {photoData.map((photo) => (
                 <motion.div
-                  key={data.preview}
+                  key={photo.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm flex flex-col sm:flex-row gap-6 group"
+                  className="bg-white p-4 rounded-3xl border border-neutral-100 shadow-sm flex flex-col sm:flex-row gap-6 group relative overflow-hidden"
                 >
+                  {/* Individual Progress Background */}
+                  {uploading && photo.status !== 'done' && (
+                    <div 
+                      className="absolute bottom-0 left-0 h-1 bg-orange-100 transition-all duration-300"
+                      style={{ width: `${photo.progress}%` }}
+                    />
+                  )}
+
                   <div className="relative w-full sm:w-40 aspect-square rounded-2xl overflow-hidden flex-shrink-0">
-                    <img src={data.preview} alt="Preview" className="w-full h-full object-cover" />
+                    <img src={photo.preview} alt="Preview" className="w-full h-full object-cover" />
                     {!uploading && (
                       <button
-                        onClick={() => removePhoto(index)}
+                        onClick={() => removePhoto(photo.id)}
                         className="absolute top-2 right-2 p-1.5 bg-black/50 text-white rounded-full hover:bg-black transition-colors"
                       >
                         <X className="w-4 h-4" />
                       </button>
                     )}
+                    {uploading && photo.status === 'done' && (
+                      <div className="absolute inset-0 bg-green-500/40 flex items-center justify-center">
+                        <CheckCircle2 className="w-8 h-8 text-white" />
+                      </div>
+                    )}
                   </div>
                   
                   <div className="flex-1 space-y-4">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1">
-                        <Type className="w-3 h-3" /> Caption
-                      </label>
-                      <input
-                        type="text"
-                        value={data.caption}
-                        onChange={(e) => updateMetadata(index, 'caption', e.target.value)}
-                        placeholder="Add a caption..."
-                        disabled={uploading}
-                        className="w-full px-4 py-2 bg-neutral-50 rounded-xl border border-transparent focus:border-orange-500 focus:bg-white outline-none transition-all text-sm"
-                      />
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1 flex-1 mr-4">
+                        <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1">
+                          <Type className="w-3 h-3" /> Caption
+                        </label>
+                        <input
+                          type="text"
+                          value={photo.caption}
+                          onChange={(e) => updateMetadata(photo.id, 'caption', e.target.value)}
+                          placeholder="Add a caption..."
+                          disabled={uploading}
+                          className="w-full px-4 py-2 bg-neutral-50 rounded-xl border border-transparent focus:border-orange-500 focus:bg-white outline-none transition-all text-sm"
+                        />
+                      </div>
+                      {uploading && (
+                        <div className="text-right">
+                          <span className={`text-[10px] font-bold uppercase px-2 py-1 rounded-md ${
+                            photo.status === 'done' ? 'bg-green-100 text-green-600' :
+                            photo.status === 'error' ? 'bg-red-100 text-red-600' :
+                            'bg-orange-100 text-orange-600'
+                          }`}>
+                            {photo.status}
+                          </span>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider flex items-center gap-1">
@@ -198,8 +244,8 @@ export function UploadPhoto() {
                       </label>
                       <input
                         type="text"
-                        value={data.tags}
-                        onChange={(e) => updateMetadata(index, 'tags', e.target.value)}
+                        value={photo.tags}
+                        onChange={(e) => updateMetadata(photo.id, 'tags', e.target.value)}
                         placeholder="e.g. candid, sunset, group"
                         disabled={uploading}
                         className="w-full px-4 py-2 bg-neutral-50 rounded-xl border border-transparent focus:border-orange-500 focus:bg-white outline-none transition-all text-sm"
@@ -211,30 +257,35 @@ export function UploadPhoto() {
             </AnimatePresence>
           </div>
 
-          <div className="sticky bottom-8 pt-4">
-            {uploading ? (
-              <div className="bg-white p-6 rounded-3xl shadow-2xl border border-neutral-100 space-y-4">
-                <div className="h-3 bg-neutral-100 rounded-full overflow-hidden">
-                  <motion.div
-                    className="h-full bg-orange-500"
-                    initial={{ width: 0 }}
-                    animate={{ width: `${progress}%` }}
-                  />
+          <div className="fixed bottom-8 left-0 right-0 px-4 z-40">
+            <div className="max-w-4xl mx-auto">
+              {uploading ? (
+                <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border border-neutral-100 space-y-4">
+                  <div className="flex justify-between items-center text-sm font-bold">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-orange-500" />
+                      <span className="text-neutral-600">Overall Progress</span>
+                    </div>
+                    <span className="text-orange-500">{overallProgress}%</span>
+                  </div>
+                  <div className="h-3 bg-neutral-100 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-orange-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${overallProgress}%` }}
+                    />
+                  </div>
                 </div>
-                <div className="flex justify-between items-center text-sm font-bold">
-                  <span className="text-orange-500 animate-pulse">Processing & Uploading...</span>
-                  <span>{progress}%</span>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={handleUpload}
-                className="w-full py-5 bg-black text-white rounded-full font-bold text-xl hover:bg-neutral-800 transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3"
-              >
-                <CheckCircle2 className="w-6 h-6" />
-                Upload {photoData.length} Photos
-              </button>
-            )}
+              ) : (
+                <button
+                  onClick={handleUpload}
+                  className="w-full py-5 bg-black text-white rounded-full font-bold text-xl hover:bg-neutral-800 transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <CheckCircle2 className="w-6 h-6" />
+                  Upload {photoData.length} Photos
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
