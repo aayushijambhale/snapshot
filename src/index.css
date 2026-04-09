@@ -31,7 +31,7 @@
 
 @layer components {
   .editorial-title {
-    @apply font-display text-[15vw] sm:text-[12vw] font-black uppercase tracking-tighter leading-[0.8] mb-8;
+    @apply font-display text-[12vw] sm:text-[10vw] font-black uppercase tracking-tighter leading-[0.85] mb-6;
   }
 
   .micro-label {
@@ -51,15 +51,15 @@
   }
   
   .premium-card {
-    @apply bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1;
+    @apply bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1;
   }
 
   .bento-grid {
-    @apply grid grid-cols-1 md:grid-cols-12 gap-6;
+    @apply grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6;
   }
 
   .bento-item {
-    @apply bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 p-8 flex flex-col justify-between overflow-hidden relative;
+    @apply bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative;
   }
 }
 

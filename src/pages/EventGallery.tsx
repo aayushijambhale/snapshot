@@ -395,35 +395,35 @@ export function EventGallery() {
   }
 
   return (
-    <div className="space-y-16 pb-32">
+    <div className="space-y-12 pb-32">
       {/* Header Section - Editorial Style */}
-      <section className="relative py-20 overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[600px] bg-gradient-to-b from-orange-500/10 via-rose-500/5 to-transparent blur-[120px] -z-10" />
+      <section className="relative py-12 overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[500px] bg-gradient-to-b from-orange-500/10 via-rose-500/5 to-transparent blur-[120px] -z-10" />
         
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="space-y-12">
-            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-12">
-              <div className="space-y-10 max-w-4xl">
+          <div className="space-y-10">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
+              <div className="space-y-8 max-w-4xl">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-4"
+                  className="flex items-center gap-3"
                 >
                   <Link 
                     to="/" 
-                    className="p-4 bg-white dark:bg-neutral-900 rounded-2xl border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm"
+                    className="p-3 bg-white dark:bg-neutral-900 rounded-xl border border-neutral-100 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm"
                   >
-                    <ArrowLeft className="w-5 h-5 text-neutral-400 group-hover:text-orange-500" />
+                    <ArrowLeft className="w-4 h-4 text-neutral-400 group-hover:text-orange-500" />
                   </Link>
-                  <div className="h-[1px] w-12 bg-orange-500/30" />
+                  <div className="h-[1px] w-8 bg-orange-500/30" />
                   <span className="micro-label text-orange-500">Live Event Gallery</span>
                 </motion.div>
 
-                <div className="space-y-6">
+                <div className="space-y-4">
                   <motion.h1 
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="text-7xl sm:text-9xl font-black tracking-tighter leading-[0.8] dark:text-white"
+                    className="text-6xl sm:text-8xl font-black tracking-tighter leading-[0.85] dark:text-white"
                   >
                     {event?.name || 'Loading...'}
                   </motion.h1>
@@ -432,20 +432,20 @@ export function EventGallery() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className="flex flex-wrap gap-4 pt-4"
+                    className="flex flex-wrap gap-3 pt-2"
                   >
-                    <div className="px-6 py-3 bg-neutral-100 dark:bg-neutral-800 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 dark:text-neutral-400 flex items-center gap-3">
-                      <CalendarIcon className="w-4 h-4" />
+                    <div className="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
+                      <CalendarIcon className="w-3.5 h-3.5" />
                       {event?.date || 'TBA'}
                     </div>
                     {event?.location && (
-                      <div className="px-6 py-3 bg-neutral-100 dark:bg-neutral-800 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-neutral-500 dark:text-neutral-400 flex items-center gap-3">
-                        <MapPin className="w-4 h-4" />
+                      <div className="px-4 py-2 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] text-neutral-500 dark:text-neutral-400 flex items-center gap-2">
+                        <MapPin className="w-3.5 h-3.5" />
                         {event.location}
                       </div>
                     )}
-                    <div className="px-6 py-3 bg-orange-500/10 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-orange-500 flex items-center gap-3">
-                      <Grid className="w-4 h-4" />
+                    <div className="px-4 py-2 bg-orange-500/10 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] text-orange-500 flex items-center gap-2">
+                      <Grid className="w-3.5 h-3.5" />
                       {photos.length} Photos
                     </div>
                   </motion.div>
@@ -456,58 +456,58 @@ export function EventGallery() {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.2 }}
-                className="flex flex-wrap items-center gap-4"
+                className="flex flex-wrap items-center gap-3"
               >
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   {user?.uid === event?.createdBy && (
                     <Link
                       to={`/event/${eventId}/settings`}
-                      className="p-5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm"
+                      className="p-4 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm"
                       title="Settings"
                     >
-                      <Settings className="w-6 h-6 text-neutral-400 group-hover:text-orange-500" />
+                      <Settings className="w-5 h-5 text-neutral-400 group-hover:text-orange-500" />
                     </Link>
                   )}
                   <button
                     onClick={() => setShowQR(true)}
-                    className="p-5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-3xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm flex items-center gap-3"
+                    className="p-4 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm flex items-center gap-2"
                     title="Event QR"
                   >
-                    <QrCode className="w-6 h-6 text-neutral-400 group-hover:text-orange-500" />
-                    <span className="text-xs font-black uppercase tracking-widest text-neutral-400 group-hover:text-orange-500 hidden md:block">Share QR</span>
+                    <QrCode className="w-5 h-5 text-neutral-400 group-hover:text-orange-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 group-hover:text-orange-500 hidden md:block">Share QR</span>
                   </button>
                   <button
                     onClick={() => {
                       setIsSelectMode(!isSelectMode);
                       setSelectedPhotoIds([]);
                     }}
-                    className={`p-5 rounded-3xl transition-all shadow-sm flex items-center gap-3 ${
+                    className={`p-4 rounded-2xl transition-all shadow-sm flex items-center gap-2 ${
                       isSelectMode 
                         ? 'bg-orange-500 text-white' 
                         : 'bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 text-neutral-400 hover:text-orange-500'
                     }`}
                   >
-                    {isSelectMode ? <CheckSquare className="w-6 h-6" /> : <Square className="w-6 h-6" />}
-                    {isSelectMode && <span className="text-xs font-black uppercase tracking-widest">Done</span>}
+                    {isSelectMode ? <CheckSquare className="w-5 h-5" /> : <Square className="w-5 h-5" />}
+                    {isSelectMode && <span className="text-[10px] font-black uppercase tracking-widest">Done</span>}
                   </button>
                 </div>
 
-                <div className="h-12 w-px bg-neutral-200 dark:bg-neutral-800 hidden sm:block" />
+                <div className="h-10 w-px bg-neutral-200 dark:bg-neutral-800 hidden sm:block" />
 
-                <div className="flex gap-4 w-full sm:w-auto">
+                <div className="flex gap-3 w-full sm:w-auto">
                   <Link
                     to={`/event/${eventId}/search`}
-                    className="flex-1 sm:flex-none px-10 py-6 bg-black dark:bg-white text-white dark:text-black rounded-[2.5rem] font-black flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-2xl active:scale-95 group"
+                    className="flex-1 sm:flex-none px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black flex items-center justify-center gap-2.5 hover:scale-105 transition-all shadow-2xl active:scale-95 group"
                   >
-                    <Sparkles className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+                    <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                     Find Me
                   </Link>
                   
                   <Link
                     to={`/event/${eventId}/upload`}
-                    className="flex-1 sm:flex-none px-10 py-6 bg-orange-500 text-white rounded-[2.5rem] font-black flex items-center justify-center gap-3 hover:scale-105 transition-all shadow-xl shadow-orange-200 dark:shadow-none active:scale-95"
+                    className="flex-1 sm:flex-none px-8 py-4 bg-orange-500 text-white rounded-2xl font-black flex items-center justify-center gap-2.5 hover:scale-105 transition-all shadow-xl shadow-orange-200 dark:shadow-none active:scale-95"
                   >
-                    <Upload className="w-6 h-6" />
+                    <Upload className="w-5 h-5" />
                     Upload
                   </Link>
                 </div>
@@ -524,32 +524,32 @@ export function EventGallery() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] glass-dark px-8 py-4 rounded-[2.5rem] flex items-center gap-8 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10"
+            className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[60] glass-dark px-6 py-3 rounded-2xl flex items-center gap-6 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/10"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-orange-500 rounded-2xl flex items-center justify-center text-white font-black">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-orange-500 rounded-xl flex items-center justify-center text-white font-black text-sm">
                 {selectedPhotoIds.length}
               </div>
-              <p className="text-white font-bold text-sm">Photos Selected</p>
+              <p className="text-white font-bold text-xs">Photos Selected</p>
             </div>
-            <div className="h-8 w-px bg-white/10" />
-            <div className="flex items-center gap-3">
+            <div className="h-6 w-px bg-white/10" />
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="p-3 bg-red-500/20 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all"
+                className="p-2.5 bg-red-500/20 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4" />
               </button>
               <div className="relative">
                 <button
                   onClick={handleBulkDownload}
                   disabled={downloadingAll}
-                  className="p-3 bg-white/10 text-white rounded-xl hover:bg-white hover:text-black transition-all disabled:opacity-50"
+                  className="p-2.5 bg-white/10 text-white rounded-lg hover:bg-white hover:text-black transition-all disabled:opacity-50"
                 >
-                  {downloadingAll ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                  {downloadingAll ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 </button>
                 {downloadingAll && zipProgress > 0 && (
-                  <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[10px] font-black px-2 py-1 rounded-lg whitespace-nowrap">
+                  <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-black/80 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md whitespace-nowrap">
                     {zipProgress}%
                   </div>
                 )}
@@ -561,16 +561,16 @@ export function EventGallery() {
 
       {/* Tag Filtering */}
       {allTags.length > 0 && (
-        <div className="space-y-4 px-2">
-          <div className="flex items-center gap-3 text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
-            <Filter className="w-4 h-4 text-orange-500" /> Filter Gallery
+        <div className="space-y-3 px-2">
+          <div className="flex items-center gap-2 text-[9px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">
+            <Filter className="w-3.5 h-3.5 text-orange-500" /> Filter Gallery
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {allTags.map(tag => (
               <button
                 key={tag}
                 onClick={() => toggleTag(tag)}
-                className={`px-6 py-3 rounded-2xl text-xs font-black uppercase tracking-widest transition-all border-2 ${
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${
                   selectedTags.includes(tag)
                     ? 'bg-orange-500 border-orange-500 text-white shadow-xl shadow-orange-200 dark:shadow-none'
                     : 'bg-white dark:bg-neutral-800 border-neutral-100 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 hover:border-orange-500/30'
@@ -582,7 +582,7 @@ export function EventGallery() {
             {selectedTags.length > 0 && (
               <button
                 onClick={() => setSelectedTags([])}
-                className="px-6 py-3 text-xs font-black uppercase tracking-widest text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-2xl transition-all"
+                className="px-4 py-2 text-[10px] font-black uppercase tracking-widest text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
               >
                 Clear All
               </button>
@@ -591,10 +591,10 @@ export function EventGallery() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {loading ? (
           Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="aspect-square bg-neutral-100 dark:bg-neutral-800 rounded-[2.5rem] animate-pulse" />
+            <div key={i} className="aspect-square bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse" />
           ))
         ) : (
           <AnimatePresence mode="popLayout">

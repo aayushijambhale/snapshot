@@ -223,21 +223,21 @@ export function ClientDashboard() {
 
   return (
     <ErrorBoundary>
-      <div className="max-w-7xl mx-auto space-y-12 pb-32 px-4 sm:px-6">
+      <div className="max-w-6xl mx-auto space-y-10 pb-32 px-4 sm:px-6">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-2 text-orange-500 font-black text-xs uppercase tracking-widest"
+            className="flex items-center gap-2 text-orange-500 font-black text-[10px] uppercase tracking-widest"
           >
-            <LayoutDashboard className="w-4 h-4" />
+            <LayoutDashboard className="w-3.5 h-3.5" />
             Control Center
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-5xl font-black tracking-tighter dark:text-white"
+            className="text-4xl font-black tracking-tighter dark:text-white"
           >
             Your <span className="gradient-text">Insights.</span>
           </motion.h1>
@@ -246,20 +246,20 @@ export function ClientDashboard() {
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="flex items-center gap-3 bg-neutral-100 dark:bg-neutral-800 p-2 rounded-3xl border border-neutral-200 dark:border-neutral-700"
+          className="flex items-center gap-2.5 bg-neutral-100 dark:bg-neutral-800 p-1.5 rounded-2xl border border-neutral-200 dark:border-neutral-700"
         >
-          <div className="px-4 py-2 bg-white dark:bg-neutral-900 rounded-2xl shadow-sm border border-neutral-200 dark:border-neutral-700 text-sm font-bold dark:text-white flex items-center gap-2">
-            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <div className="px-3.5 py-1.5 bg-white dark:bg-neutral-900 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700 text-xs font-bold dark:text-white flex items-center gap-2">
+            <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
             System Live
           </div>
-          <button className="p-2 hover:bg-white dark:hover:bg-neutral-900 rounded-2xl transition-all text-neutral-500">
-            <Settings className="w-5 h-5" />
+          <button className="p-1.5 hover:bg-white dark:hover:bg-neutral-900 rounded-xl transition-all text-neutral-500">
+            <Settings className="w-4.5 h-4.5" />
           </button>
         </motion.div>
       </header>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {[
           { label: 'Total Events', value: stats.totalEvents, icon: Calendar, color: 'bg-orange-500' },
           { label: 'Photos Shared', value: stats.photosShared, icon: Camera, color: 'bg-blue-500' },
@@ -270,41 +270,41 @@ export function ClientDashboard() {
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className="premium-card p-8 group relative overflow-hidden"
+            transition={{ delay: i * 0.05 }}
+            className="premium-card p-6 group relative overflow-hidden"
           >
-            <div className="relative z-10 space-y-4">
-              <div className={`w-12 h-12 ${stat.color} rounded-2xl flex items-center justify-center text-white shadow-lg shadow-${stat.color.split('-')[1]}-200 dark:shadow-none transition-transform group-hover:scale-110`}>
-                <stat.icon className="w-6 h-6" />
+            <div className="relative z-10 space-y-3">
+              <div className={`w-10 h-10 ${stat.color} rounded-xl flex items-center justify-center text-white shadow-lg shadow-${stat.color.split('-')[1]}-200 dark:shadow-none transition-transform group-hover:scale-110`}>
+                <stat.icon className="w-5 h-5" />
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{stat.label}</p>
-                <h3 className="text-4xl font-black dark:text-white">
+              <div className="space-y-0.5">
+                <p className="text-[10px] font-black text-neutral-400 dark:text-neutral-500 uppercase tracking-widest">{stat.label}</p>
+                <h3 className="text-3xl font-black dark:text-white">
                   {loading ? (
-                    <div className="h-10 w-20 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-xl" />
+                    <div className="h-8 w-16 bg-neutral-100 dark:bg-neutral-800 animate-pulse rounded-lg" />
                   ) : (
                     stat.value
                   )}
                 </h3>
               </div>
             </div>
-            <div className={`absolute -bottom-6 -right-6 w-24 h-24 ${stat.color} opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity`} />
+            <div className={`absolute -bottom-6 -right-6 w-20 h-20 ${stat.color} opacity-5 rounded-full blur-2xl group-hover:opacity-10 transition-opacity`} />
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Recent Events */}
-        <div className="lg:col-span-8 space-y-8">
+        <div className="lg:col-span-8 space-y-6">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-2xl font-black dark:text-white">Recent Galleries</h2>
-            <Link to="/" className="text-sm font-black text-orange-500 hover:underline">View All</Link>
+            <h2 className="text-xl font-black dark:text-white">Recent Galleries</h2>
+            <Link to="/" className="text-xs font-black text-orange-500 hover:underline">View All</Link>
           </div>
           
-          <div className="space-y-4">
+          <div className="space-y-3">
             {loading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-24 bg-neutral-100 dark:bg-neutral-800 rounded-3xl animate-pulse" />
+                <div key={i} className="h-20 bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse" />
               ))
             ) : recentEvents.length > 0 ? (
               recentEvents.map((event, i) => (
@@ -312,32 +312,32 @@ export function ClientDashboard() {
                   key={event.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="glass p-6 rounded-3xl flex items-center justify-between group hover:border-orange-500/30 transition-all cursor-pointer"
+                  transition={{ delay: i * 0.05 }}
+                  className="glass p-5 rounded-2xl flex items-center justify-between group hover:border-orange-500/30 transition-all cursor-pointer"
                   onClick={() => navigate(`/event/${event.id}`)}
                 >
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-16 bg-orange-50 dark:bg-orange-900/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Camera className="w-8 h-8 text-orange-500" />
+                  <div className="flex items-center gap-5">
+                    <div className="w-14 h-14 bg-orange-50 dark:bg-orange-900/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Camera className="w-7 h-7 text-orange-500" />
                     </div>
                     <div>
-                      <h4 className="text-lg font-black dark:text-white group-hover:text-orange-500 transition-colors">{event.name}</h4>
-                      <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                      <h4 className="text-base font-black dark:text-white group-hover:text-orange-500 transition-colors">{event.name}</h4>
+                      <div className="flex items-center gap-3 mt-0.5">
+                        <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
                           {new Date(event.createdAt).toLocaleDateString()}
                         </span>
-                        <span className="text-xs font-bold text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-neutral-400 dark:text-neutral-500 flex items-center gap-1">
                           <MapPin className="w-3 h-3" />
                           {event.location || 'Remote'}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="hidden sm:flex -space-x-3">
+                  <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex -space-x-2.5">
                       {[1, 2, 3].map(i => (
-                        <div key={i} className="w-8 h-8 rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
+                        <div key={i} className="w-7 h-7 rounded-full border-2 border-white dark:border-neutral-900 bg-neutral-200 dark:bg-neutral-800 overflow-hidden">
                           <img 
                             src={`https://picsum.photos/seed/${event.id + i}/100`} 
                             alt="" 
@@ -347,36 +347,36 @@ export function ClientDashboard() {
                         </div>
                       ))}
                     </div>
-                    <ArrowRight className="w-5 h-5 text-neutral-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
+                    <ArrowRight className="w-4 h-4 text-neutral-300 group-hover:text-orange-500 group-hover:translate-x-1 transition-all" />
                   </div>
                 </motion.div>
               ))
             ) : (
-              <div className="py-12 text-center glass rounded-3xl border-2 border-dashed border-neutral-100 dark:border-neutral-800">
-                <p className="text-neutral-400 font-bold">No events yet. Start by creating one!</p>
+              <div className="py-10 text-center glass rounded-2xl border-2 border-dashed border-neutral-100 dark:border-neutral-800">
+                <p className="text-neutral-400 font-bold text-sm">No events yet. Start by creating one!</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Activity Feed */}
-        <div className="lg:col-span-4 space-y-8">
+        <div className="lg:col-span-4 space-y-6">
           <div className="flex items-center justify-between px-2">
-            <h2 className="text-2xl font-black dark:text-white">Activity</h2>
-            <button className="p-2 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-xl transition-all">
-              <RefreshCw className="w-4 h-4 text-neutral-400" />
+            <h2 className="text-xl font-black dark:text-white">Activity</h2>
+            <button className="p-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg transition-all">
+              <RefreshCw className="w-3.5 h-3.5 text-neutral-400" />
             </button>
           </div>
 
-          <div className="glass p-8 rounded-[2.5rem] space-y-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Activity className="w-24 h-24" />
+          <div className="glass p-6 rounded-[2rem] space-y-6 relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-3 opacity-10">
+              <Activity className="w-20 h-20" />
             </div>
             
-            <div className="space-y-6 relative z-10">
+            <div className="space-y-5 relative z-10">
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-12 bg-neutral-100 dark:bg-neutral-800 rounded-2xl animate-pulse" />
+                  <div key={i} className="h-10 bg-neutral-100 dark:bg-neutral-800 rounded-xl animate-pulse" />
                 ))
               ) : recentActivity.length > 0 ? (
                 recentActivity.map((activity, i) => (
@@ -385,34 +385,34 @@ export function ClientDashboard() {
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.05 }}
-                    className="flex gap-4"
+                    className="flex gap-3.5"
                   >
                     <div className="relative">
-                      <div className="w-10 h-10 bg-neutral-100 dark:bg-neutral-800 rounded-xl flex items-center justify-center text-neutral-500">
-                        {activity.type === 'upload' ? <Image className="w-5 h-5" /> : 
-                         activity.type === 'match' ? <Sparkles className="w-5 h-5" /> : 
-                         <Calendar className="w-5 h-5" />}
+                      <div className="w-9 h-9 bg-neutral-100 dark:bg-neutral-800 rounded-lg flex items-center justify-center text-neutral-500">
+                        {activity.type === 'upload' ? <Image className="w-4.5 h-4.5" /> : 
+                         activity.type === 'match' ? <Sparkles className="w-4.5 h-4.5" /> : 
+                         <Calendar className="w-4.5 h-4.5" />}
                       </div>
                       {i !== recentActivity.length - 1 && (
-                        <div className="absolute top-10 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-neutral-100 dark:bg-neutral-800" />
+                        <div className="absolute top-9 left-1/2 -translate-x-1/2 w-0.5 h-5 bg-neutral-100 dark:bg-neutral-800" />
                       )}
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-bold dark:text-neutral-200 leading-tight">{activity.description}</p>
-                      <p className="text-[10px] font-black text-neutral-400 uppercase tracking-widest">
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold dark:text-neutral-200 leading-tight">{activity.description}</p>
+                      <p className="text-[9px] font-black text-neutral-400 uppercase tracking-widest">
                         {activity.timestamp?.toDate ? new Date(activity.timestamp.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                       </p>
                     </div>
                   </motion.div>
                 ))
               ) : (
-                <div className="text-center py-10">
-                  <p className="text-sm text-neutral-400 font-bold">No recent activity</p>
+                <div className="text-center py-8">
+                  <p className="text-xs text-neutral-400 font-bold">No recent activity</p>
                 </div>
               )}
             </div>
             
-            <button className="w-full py-4 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all">
+            <button className="w-full py-3.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all">
               View Full History
             </button>
           </div>
