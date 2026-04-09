@@ -13,7 +13,7 @@ import { saveAs } from 'file-saver';
 export function FaceSearch() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, checkServerSession } = useAuth();
   const [selfies, setSelfies] = useState<string[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchingMessage, setSearchingMessage] = useState('Searching gallery...');
@@ -130,9 +130,14 @@ export function FaceSearch() {
       } else {
         toast.info('No matching photos found. Try more selfies from different angles!');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Search error:', error);
-      toast.error('AI search failed. Please try again.');
+      if (error.message === 'Not authenticated') {
+        checkServerSession();
+        toast.error('Session expired. Please login again to use AI features.');
+      } else {
+        toast.error('AI search failed. Please try again.');
+      }
     } finally {
       setSearching(false);
     }
@@ -234,7 +239,7 @@ export function FaceSearch() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Link to={`/event/${eventId}`} className="inline-flex items-center gap-2 px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-neutral-200 dark:hover:bg-neutral-700 transition-all mb-4">
+          <Link to={`/event/${eventId}`} className="btn-secondary px-4 py-2 text-[10px] uppercase tracking-widest w-fit mb-4 mx-auto">
             <ArrowLeft className="w-3.5 h-3.5" /> Back to Gallery
           </Link>
         </motion.div>
@@ -319,7 +324,7 @@ export function FaceSearch() {
                 disabled={selfies.length === 0 || searching}
                 className={`
                   w-full py-4 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-2.5 shadow-2xl active:scale-95
-                  ${selfies.length === 0 || searching ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-200 dark:shadow-none'}
+                  ${selfies.length === 0 || searching ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed' : 'btn-primary'}
                 `}
               >
                 {searching ? (

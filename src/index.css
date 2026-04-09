@@ -14,18 +14,18 @@
   --radius-4xl: 2rem;
   --radius-5xl: 3rem;
   
-  --shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.03);
   --shadow-inner-glow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @layer base {
   body {
-    @apply font-sans antialiased selection:bg-orange-100 selection:text-orange-900 bg-neutral-50 text-neutral-900 transition-colors duration-300;
+    @apply font-sans antialiased selection:bg-orange-100 selection:text-orange-900 bg-[#FAFAFA] text-neutral-900 transition-colors duration-300;
   }
   
   h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight leading-[0.9];
+    @apply font-display tracking-tight;
   }
 }
 
@@ -35,31 +35,43 @@
   }
 
   .micro-label {
-    @apply text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400;
+    @apply text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-400;
   }
 
   .glass {
-    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-glass;
+    @apply bg-white/80 backdrop-blur-xl border border-white/40 shadow-glass;
   }
   
   .glass-dark {
-    @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl;
+    @apply bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-2xl;
   }
   
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-orange-500 via-rose-500 to-purple-600;
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-orange-500 to-rose-600;
   }
   
   .premium-card {
-    @apply bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1;
+    @apply bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200/50 dark:border-neutral-800 shadow-premium hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5;
   }
 
   .bento-grid {
-    @apply grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-6;
+    @apply grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8;
   }
 
   .bento-item {
-    @apply bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 p-6 sm:p-8 flex flex-col justify-between overflow-hidden relative;
+    @apply bg-white dark:bg-neutral-900 rounded-[2rem] border border-neutral-200/50 dark:border-neutral-800 shadow-premium hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5 p-8 sm:p-10 flex flex-col justify-between overflow-hidden relative;
+  }
+
+  .input-premium {
+    @apply w-full px-6 py-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all duration-300 placeholder:text-neutral-400;
+  }
+
+  .btn-primary {
+    @apply px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2;
+  }
+
+  .btn-secondary {
+    @apply px-8 py-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-semibold rounded-2xl transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2;
   }
 }
 

@@ -12,6 +12,7 @@ import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { GoogleDriveProvider } from './context/GoogleDriveContext';
 import { Toaster } from 'sonner';
 
 function Layout({ children }: { children: React.ReactNode }) {
@@ -40,21 +41,23 @@ function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <AuthProvider>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/event/:eventId" element={<EventGallery />} />
-            <Route path="/event/:eventId/upload" element={<UploadPhoto />} />
-            <Route path="/event/:eventId/search" element={<FaceSearch />} />
-            <Route path="/event/:eventId/settings" element={<EventSettings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/client" element={<ClientDashboard />} />
-            <Route path="/ai-lab" element={<AILab />} />
-          </Routes>
-        </Layout>
-        <Toaster position="top-center" richColors />
-      </Router>
+      <GoogleDriveProvider>
+        <Router>
+          <Layout>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/event/:eventId" element={<EventGallery />} />
+              <Route path="/event/:eventId/upload" element={<UploadPhoto />} />
+              <Route path="/event/:eventId/search" element={<FaceSearch />} />
+              <Route path="/event/:eventId/settings" element={<EventSettings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/client" element={<ClientDashboard />} />
+              <Route path="/ai-lab" element={<AILab />} />
+            </Routes>
+          </Layout>
+          <Toaster position="top-center" richColors />
+        </Router>
+      </GoogleDriveProvider>
     </AuthProvider>
   );
 }

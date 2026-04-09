@@ -4,7 +4,7 @@ import { doc, getDoc, collection, query, orderBy, onSnapshot, deleteDoc, writeBa
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { QRCodeSVG } from 'qrcode.react';
-import { Camera, Search, Share2, Upload, Grid, ArrowLeft, Download, Trash2, Tag, User, Filter, X as CloseIcon, Settings, CheckSquare, Square, AlertTriangle, Calendar as CalendarIcon, MapPin, Heart, MessageCircle, Send, Sparkles, Smile, ShieldOff, RefreshCw, ArrowRight, QrCode } from 'lucide-react';
+import { Camera, Search, Share2, Upload, Grid, ArrowLeft, Download, Trash2, Tag, User, Filter, X as CloseIcon, Settings, CheckSquare, Square, AlertTriangle, Calendar as CalendarIcon, MapPin, Heart, MessageCircle, Send, Sparkles, Smile, ShieldOff, RefreshCw, ArrowRight, QrCode, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import JSZip from 'jszip';
@@ -14,7 +14,7 @@ import { generateCaptionAndHashtags, detectFaces } from '../lib/gemini';
 export function EventGallery() {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, checkServerSession } = useAuth();
   const [event, setEvent] = useState<any>(null);
   const [photos, setPhotos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -327,9 +327,14 @@ export function EventGallery() {
         tags: [...(selectedPhoto.tags || []), ...result.hashtags.map((h: string) => h.replace('#', ''))] 
       });
       toast.success('AI Caption generated!');
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Caption error:", error);
-      toast.error('Failed to generate caption');
+      if (error.message === 'Not authenticated') {
+        checkServerSession();
+        toast.error('Session expired. Please login again to use AI features.');
+      } else {
+        toast.error('Failed to generate caption');
+      }
     } finally {
       setAiLoading(false);
     }
@@ -378,9 +383,14 @@ export function EventGallery() {
         };
       });
       toast.success('Faces blurred successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error("AI Blur error:", error);
-      toast.error('Failed to blur faces');
+      if (error.message === 'Not authenticated') {
+        checkServerSession();
+        toast.error('Session expired. Please login again to use AI features.');
+      } else {
+        toast.error('Failed to blur faces');
+      }
     } finally {
       setAiLoading(false);
     }
@@ -448,7 +458,24 @@ export function EventGallery() {
                       <Grid className="w-3.5 h-3.5" />
                       {photos.length} Photos
                     </div>
+                    {event?.fileCount > 0 && (
+                      <div className="px-4 py-2 bg-blue-500/10 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] text-blue-500 flex items-center gap-2">
+                        <Upload className="w-3.5 h-3.5" />
+                        {event.fileCount} Files
+                      </div>
+                    )}
                   </motion.div>
+
+                  {event?.description && (
+                    <motion.p
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.2 }}
+                      className="text-lg text-neutral-500 dark:text-neutral-400 max-w-2xl leading-relaxed font-medium"
+                    >
+                      {event.description}
+                    </motion.p>
+                  )}
                 </div>
               </div>
 
@@ -476,6 +503,18 @@ export function EventGallery() {
                     <QrCode className="w-5 h-5 text-neutral-400 group-hover:text-orange-500" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 group-hover:text-orange-500 hidden md:block">Share QR</span>
                   </button>
+                  {event?.driveFolderLink && (
+                    <a
+                      href={event.driveFolderLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-4 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-all group shadow-sm flex items-center gap-2"
+                      title="View on Google Drive"
+                    >
+                      <Globe className="w-5 h-5 text-neutral-400 group-hover:text-blue-500" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 group-hover:text-blue-500 hidden md:block">Drive Folder</span>
+                    </a>
+                  )}
                   <button
                     onClick={() => {
                       setIsSelectMode(!isSelectMode);
@@ -497,7 +536,7 @@ export function EventGallery() {
                 <div className="flex gap-3 w-full sm:w-auto">
                   <Link
                     to={`/event/${eventId}/search`}
-                    className="flex-1 sm:flex-none px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black flex items-center justify-center gap-2.5 hover:scale-105 transition-all shadow-2xl active:scale-95 group"
+                    className="flex-1 sm:flex-none btn-secondary border-none bg-black dark:bg-white text-white dark:text-black shadow-2xl group"
                   >
                     <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
                     Find Me
@@ -505,7 +544,7 @@ export function EventGallery() {
                   
                   <Link
                     to={`/event/${eventId}/upload`}
-                    className="flex-1 sm:flex-none px-8 py-4 bg-orange-500 text-white rounded-2xl font-black flex items-center justify-center gap-2.5 hover:scale-105 transition-all shadow-xl shadow-orange-200 dark:shadow-none active:scale-95"
+                    className="flex-1 sm:flex-none btn-primary"
                   >
                     <Upload className="w-5 h-5" />
                     Upload

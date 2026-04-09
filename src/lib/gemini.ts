@@ -1,21 +1,30 @@
-import { GoogleGenAI, Type, Modality } from "@google/genai";
+async function callAiProxy(model: string, contents: any, generationConfig?: any) {
+  const response = await fetch('/api/ai/proxy', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model, contents, generationConfig }),
+    credentials: 'include'
+  });
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'AI Request failed');
+  }
+
+  return await response.json();
+}
 
 export async function findMatchingPhotos(selfieBase64s: string[], photos: { id: string, url: string }[]) {
   if (photos.length === 0 || selfieBase64s.length === 0) return [];
 
-  // Prepare parts for Gemini
-  // Part 1: The selfies
-  const selfieParts = selfieBase64s.map((s, i) => ({
+  const selfieParts = selfieBase64s.map((s) => ({
     inlineData: {
       data: s.split(',')[1],
       mimeType: "image/jpeg"
     }
   }));
 
-  // Part 2: The event photos
-  const photoParts = photos.map((p, index) => ({
+  const photoParts = photos.map((p) => ({
     inlineData: {
       data: p.url.split(',')[1],
       mimeType: "image/jpeg"
@@ -36,42 +45,19 @@ export async function findMatchingPhotos(selfieBase64s: string[], photos: { id: 
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          ...selfieParts,
-          ...photoParts,
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              index: { type: Type.INTEGER, description: "The index of the matching event photo" },
-              confidence: { type: Type.NUMBER, description: "Confidence score from 0 to 100" },
-              boundingBox: {
-                type: Type.OBJECT,
-                properties: {
-                  ymin: { type: Type.NUMBER },
-                  xmin: { type: Type.NUMBER },
-                  ymax: { type: Type.NUMBER },
-                  xmax: { type: Type.NUMBER }
-                },
-                description: "Normalized coordinates [0, 1000] of the face in the photo"
-              }
-            },
-            required: ["index", "confidence"]
-          }
-        }
-      }
+    const data = await callAiProxy("gemini-3-flash-preview", {
+      parts: [
+        ...selfieParts,
+        ...photoParts,
+        { text: prompt }
+      ]
+    }, {
+      responseMimeType: "application/json"
     });
 
-    const results = JSON.parse(response.text || "[]");
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    const results = JSON.parse(text);
+    
     return results.map((res: any) => ({
       id: photos[res.index]?.id,
       confidence: res.confidence,
@@ -91,33 +77,22 @@ export async function generateCaptionAndHashtags(imageBase64: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: imageBase64.split(',')[1],
-              mimeType: "image/jpeg"
-            }
-          },
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            caption: { type: Type.STRING },
-            hashtags: { type: Type.ARRAY, items: { type: Type.STRING } }
-          },
-          required: ["caption", "hashtags"]
-        }
-      }
+    const data = await callAiProxy("gemini-3-flash-preview", {
+      parts: [
+        {
+          inlineData: {
+            data: imageBase64.split(',')[1],
+            mimeType: "image/jpeg"
+          }
+        },
+        { text: prompt }
+      ]
+    }, {
+      responseMimeType: "application/json"
     });
 
-    return JSON.parse(response.text || "{}");
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+    return JSON.parse(text);
   } catch (error) {
     console.error("Gemini caption generation error:", error);
     throw error;
@@ -134,46 +109,47 @@ export async function detectFaces(imageBase64: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              data: imageBase64.split(',')[1],
-              mimeType: "image/jpeg"
-            }
-          },
-          { text: prompt }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.ARRAY,
-          items: {
-            type: Type.OBJECT,
-            properties: {
-              boundingBox: {
-                type: Type.OBJECT,
-                properties: {
-                  ymin: { type: Type.NUMBER },
-                  xmin: { type: Type.NUMBER },
-                  ymax: { type: Type.NUMBER },
-                  xmax: { type: Type.NUMBER }
-                }
-              },
-              confidence: { type: Type.NUMBER }
-            },
-            required: ["boundingBox", "confidence"]
+    const data = await callAiProxy("gemini-3-flash-preview", {
+      parts: [
+        {
+          inlineData: {
+            data: imageBase64.split(',')[1],
+            mimeType: "image/jpeg"
           }
-        }
-      }
+        },
+        { text: prompt }
+      ]
+    }, {
+      responseMimeType: "application/json"
     });
 
-    return JSON.parse(response.text || "[]");
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "[]";
+    return JSON.parse(text);
   } catch (error) {
     console.error("Gemini face detection error:", error);
     throw error;
+  }
+}
+
+export async function generateEventDescription(name: string, date: string, location: string) {
+  const prompt = `
+    Generate a catchy and welcoming description (2-3 sentences) for an event with the following details:
+    Name: ${name}
+    Date: ${date}
+    Location: ${location}
+    
+    The description should sound professional yet exciting, suitable for an event gallery page.
+    Return only the description text.
+  `;
+
+  try {
+    const data = await callAiProxy("gemini-3-flash-preview", {
+      parts: [{ text: prompt }]
+    });
+
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  } catch (error) {
+    console.error("Gemini event description error:", error);
+    return ""; // Return empty string on error to not block event creation
   }
 }

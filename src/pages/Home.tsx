@@ -2,13 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Plus, Calendar as CalendarIcon, ArrowRight, QrCode, Trash2, Sparkles, Shield, Zap, Users, Camera as CameraIcon } from 'lucide-react';
+import { useGoogleDrive } from '../context/GoogleDriveContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { Plus, Calendar as CalendarIcon, ArrowRight, QrCode, Trash2, Sparkles, Shield, Zap, Users, Camera as CameraIcon, Globe, Upload, MapPin, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
+import { generateEventDescription } from '../lib/gemini';
+import { useDropzone } from 'react-dropzone';
 
 export function Home() {
-  const { user, login } = useAuth();
+  const { user, login, isServerAuthenticated } = useAuth();
+  const { isConnected, connect, createFolder, uploadJson, uploadFile } = useGoogleDrive();
   const navigate = useNavigate();
   const [events, setEvents] = useState<any[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(true);
@@ -16,13 +20,49 @@ export function Home() {
   const [eventName, setEventName] = useState('');
   const [eventDate, setEventDate] = useState(new Date().toISOString().split('T')[0]);
   const [eventLocation, setEventLocation] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{
+    step: 'ai' | 'folder' | 'files' | 'db' | 'done';
+    message: string;
+    progress?: number;
+  } | null>(null);
+
+  const onDrop = (acceptedFiles: File[]) => {
+    setSelectedFiles(prev => [...prev, ...acceptedFiles]);
+  };
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'image/*': ['.jpeg', '.jpg', '.png', '.webp'],
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+    },
+    multiple: true
+  } as any);
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
 
   useEffect(() => {
     const q = query(collection(db, 'events'), orderBy('createdAt', 'desc'));
-    return onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       setEvents(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setLoadingEvents(false);
     });
+    return () => unsubscribe();
   }, []);
 
   const handleCreateEvent = async (e: React.FormEvent) => {
@@ -34,32 +74,100 @@ export function Home() {
     }
     if (!eventName.trim()) return;
 
+    setIsUploading(true);
     try {
+      let driveFolderId = null;
+      let driveFolderLink = null;
+
+      // 1. AI Enhancement
+      setUploadStatus({ step: 'ai', message: 'AI is crafting your event description...' });
+      const aiDescription = await generateEventDescription(eventName, eventDate, eventLocation);
+
+      // 2. Google Drive Folder
+      if (isConnected) {
+        setUploadStatus({ step: 'folder', message: 'Creating secure Google Drive folder...' });
+        try {
+          const folder = await createFolder(eventName);
+          driveFolderId = folder.id;
+          driveFolderLink = folder.webViewLink;
+
+          // 3. Upload Files
+          if (selectedFiles.length > 0) {
+            setUploadStatus({ 
+              step: 'files', 
+              message: `Uploading ${selectedFiles.length} files to Drive...`,
+              progress: 0 
+            });
+
+            for (let i = 0; i < selectedFiles.length; i++) {
+              const file = selectedFiles[i];
+              const base64 = await fileToBase64(file);
+              await uploadFile(file.name, base64, file.type, driveFolderId);
+              setUploadStatus(prev => prev ? { 
+                ...prev, 
+                progress: Math.round(((i + 1) / selectedFiles.length) * 100) 
+              } : null);
+            }
+          }
+
+          // Initial metadata
+          await uploadJson('event_metadata', {
+            name: eventName,
+            date: eventDate,
+            location: eventLocation,
+            description: aiDescription,
+            createdBy: user.uid,
+            creatorName: user.displayName,
+            createdAt: new Date().toISOString(),
+            fileCount: selectedFiles.length
+          }, driveFolderId);
+        } catch (err) {
+          console.error('Drive Sync Error:', err);
+          toast.error('Failed to sync with Google Drive, but event will be created locally.');
+        }
+      }
+
+      // 4. Firestore
+      setUploadStatus({ step: 'db', message: 'Finalizing event details...' });
       const docRef = await addDoc(collection(db, 'events'), {
         name: eventName,
         date: eventDate,
         location: eventLocation,
+        description: aiDescription,
         createdAt: serverTimestamp(),
         createdBy: user.uid,
         creatorName: user.displayName,
+        driveFolderId,
+        driveFolderLink,
+        fileCount: selectedFiles.length
       });
 
       // Record activity
       await addDoc(collection(db, 'activity'), {
         userId: user.uid,
         type: 'create_event',
-        description: `Created event "${eventName}"`,
+        description: `Created event "${eventName}" with ${selectedFiles.length} files`,
         timestamp: serverTimestamp(),
         eventId: docRef.id
       });
 
+      setUploadStatus({ step: 'done', message: 'Event launched successfully!' });
       toast.success('Event created successfully!');
-      setEventName('');
-      setIsCreating(false);
-      navigate(`/event/${docRef.id}`);
+      
+      setTimeout(() => {
+        setEventName('');
+        setSelectedFiles([]);
+        setIsCreating(false);
+        setIsUploading(false);
+        setUploadStatus(null);
+        navigate(`/event/${docRef.id}`);
+      }, 1500);
+
     } catch (error) {
       console.error('Error creating event:', error);
       toast.error('Failed to create event');
+      setIsUploading(false);
+      setUploadStatus(null);
     }
   };
 
@@ -142,24 +250,32 @@ export function Home() {
                 
                 <div className="flex flex-col sm:flex-row gap-3">
                   {!isCreating ? (
-                    <button
-                      onClick={() => setIsCreating(true)}
-                      className="px-8 py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black text-lg hover:scale-105 transition-all flex items-center justify-center gap-3 shadow-2xl active:scale-95"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Create Event
-                    </button>
+                    <>
+                      <button
+                        onClick={() => setIsCreating(true)}
+                        className="btn-primary text-lg px-10 py-5"
+                      >
+                        <Plus className="w-6 h-6" />
+                        Create Event
+                      </button>
+                      {user && !isServerAuthenticated && (
+                        <button
+                          onClick={login}
+                          className="btn-secondary text-lg px-10 py-5 border-orange-500 text-orange-500"
+                        >
+                          <Zap className="w-6 h-6" />
+                          Reconnect Google
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <button
                       onClick={() => setIsCreating(false)}
-                      className="px-8 py-5 bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 rounded-2xl font-black text-lg hover:bg-neutral-200 transition-all"
+                      className="btn-secondary text-lg px-10 py-5"
                     >
                       Cancel
                     </button>
                   )}
-                  <button className="px-8 py-5 bg-white dark:bg-neutral-900 border border-neutral-100 dark:border-neutral-800 rounded-2xl font-black text-lg hover:bg-neutral-50 transition-all dark:text-white">
-                    View Demo
-                  </button>
                 </div>
               </motion.div>
 
@@ -176,9 +292,61 @@ export function Home() {
                       animate={{ opacity: 1, scale: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95, y: 20 }}
                       onSubmit={handleCreateEvent} 
-                      className="glass p-8 rounded-[2.5rem] shadow-2xl border border-white/20 space-y-6"
+                      className="glass p-8 rounded-[2.5rem] shadow-2xl border border-white/20 space-y-6 relative overflow-hidden"
                     >
+                      {isUploading && uploadStatus && (
+                        <div className="absolute inset-0 z-50 bg-white/90 dark:bg-neutral-900/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center space-y-6">
+                          <div className="relative">
+                            <div className="w-20 h-20 border-4 border-orange-500/20 border-t-orange-500 rounded-full animate-spin" />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              {uploadStatus.step === 'done' ? (
+                                <CheckCircle2 className="w-8 h-8 text-green-500" />
+                              ) : (
+                                <Sparkles className="w-8 h-8 text-orange-500 animate-pulse" />
+                              )}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <h3 className="text-xl font-black tracking-tight dark:text-white">
+                              {uploadStatus.step === 'done' ? 'Success!' : 'Processing...'}
+                            </h3>
+                            <p className="text-sm text-neutral-500 dark:text-neutral-400 font-medium">
+                              {uploadStatus.message}
+                            </p>
+                          </div>
+                          {uploadStatus.progress !== undefined && (
+                            <div className="w-full max-w-xs h-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+                              <motion.div 
+                                className="h-full bg-orange-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${uploadStatus.progress}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      )}
+
                       <div className="space-y-4">
+                        {!isConnected && (
+                          <div className="p-4 bg-orange-50 dark:bg-orange-900/10 rounded-2xl border border-orange-100 dark:border-orange-900/20 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="p-2 bg-orange-500 rounded-lg">
+                                <Globe className="w-4 h-4 text-white" />
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest dark:text-white">Google Drive</p>
+                                <p className="text-[9px] text-neutral-500 dark:text-neutral-400 font-medium">Connect to auto-backup photos</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={connect}
+                              className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-all"
+                            >
+                              Connect
+                            </button>
+                          </div>
+                        )}
                         <div className="space-y-1.5">
                           <label className="micro-label ml-3">Event Name</label>
                           <input
@@ -187,7 +355,7 @@ export function Home() {
                             value={eventName}
                             onChange={(e) => setEventName(e.target.value)}
                             placeholder="e.g. Summer Gala 2024"
-                            className="w-full px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-800 dark:text-white focus:border-orange-500 outline-none transition-all text-lg font-black"
+                            className="input-premium text-lg font-bold"
                             required
                           />
                         </div>
@@ -198,7 +366,7 @@ export function Home() {
                               type="date"
                               value={eventDate}
                               onChange={(e) => setEventDate(e.target.value)}
-                              className="w-full px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-800 dark:text-white focus:border-orange-500 outline-none transition-all font-black"
+                              className="input-premium font-bold"
                               required
                             />
                           </div>
@@ -209,16 +377,68 @@ export function Home() {
                               value={eventLocation}
                               onChange={(e) => setEventLocation(e.target.value)}
                               placeholder="e.g. San Francisco"
-                              className="w-full px-6 py-4 rounded-2xl border border-neutral-100 dark:border-neutral-800 bg-white dark:bg-neutral-800 dark:text-white focus:border-orange-500 outline-none transition-all font-black"
+                              className="input-premium font-bold"
                             />
                           </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="micro-label ml-3">Event Files (Optional)</label>
+                          <div 
+                            {...getRootProps()} 
+                            className={`border-2 border-dashed rounded-3xl p-8 transition-all cursor-pointer flex flex-col items-center justify-center gap-3 ${
+                              isDragActive 
+                                ? 'border-orange-500 bg-orange-500/5' 
+                                : 'border-neutral-200 dark:border-neutral-800 hover:border-orange-500/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50'
+                            }`}
+                          >
+                            <input {...getInputProps()} />
+                            <div className="p-3 bg-neutral-100 dark:bg-neutral-800 rounded-2xl">
+                              <Upload className="w-6 h-6 text-neutral-400" />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-bold dark:text-white">Drop files here or click to browse</p>
+                              <p className="text-[10px] text-neutral-400 font-medium mt-1">Images, PDFs, or Docs (Max 10MB)</p>
+                            </div>
+                          </div>
+
+                          {selectedFiles.length > 0 && (
+                            <div className="grid grid-cols-1 gap-2 mt-4 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                              {selectedFiles.map((file, index) => (
+                                <div key={index} className="flex items-center justify-between p-3 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                                  <div className="flex items-center gap-3 overflow-hidden">
+                                    <div className="p-1.5 bg-white dark:bg-neutral-800 rounded-lg shadow-sm">
+                                      <CameraIcon className="w-3.5 h-3.5 text-neutral-400" />
+                                    </div>
+                                    <span className="text-xs font-bold truncate dark:text-white">{file.name}</span>
+                                    <span className="text-[10px] text-neutral-400 font-medium">{(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                                  </div>
+                                  <button 
+                                    type="button"
+                                    onClick={() => removeFile(index)}
+                                    className="p-1.5 hover:bg-rose-500/10 hover:text-rose-500 text-neutral-400 rounded-lg transition-colors"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <button
                         type="submit"
-                        className="w-full py-5 bg-orange-500 text-white rounded-2xl font-black text-lg hover:bg-orange-600 transition-all shadow-xl shadow-orange-200 dark:shadow-none uppercase tracking-widest"
+                        disabled={isUploading}
+                        className="btn-primary w-full py-5 text-lg uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Launch Event Gallery
+                        {isUploading ? (
+                          <div className="flex items-center gap-2">
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Launching...
+                          </div>
+                        ) : (
+                          'Launch Event Gallery'
+                        )}
                       </button>
                     </motion.form>
                   )}
@@ -300,99 +520,6 @@ export function Home() {
         </div>
       </section>
 
-      {/* Events Section */}
-      <section className="container mx-auto px-4 sm:px-6 space-y-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="space-y-3 text-left">
-            <span className="micro-label text-orange-500">The Gallery</span>
-            <h2 className="text-4xl sm:text-6xl font-black tracking-tighter dark:text-white">Live <br /> <span className="gradient-text">Galleries.</span></h2>
-          </div>
-          <p className="text-lg text-neutral-500 dark:text-neutral-400 font-medium max-w-sm leading-relaxed">
-            Join thousands of people sharing their best moments in real-time.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {loadingEvents ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-[380px] bg-neutral-100 dark:bg-neutral-800 rounded-3xl animate-pulse" />
-            ))
-          ) : events.map((event, index) => (
-            <motion.div
-              key={event.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.05 }}
-              className="premium-card group h-[380px] p-8 cursor-pointer relative overflow-hidden flex flex-col justify-between"
-              onClick={() => navigate(`/event/${event.id}`)}
-            >
-              <div className="relative z-10 space-y-6">
-                <div className="flex justify-between items-start">
-                  <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-2xl group-hover:scale-110 transition-all duration-500 shadow-lg shadow-orange-100 dark:shadow-none group-hover:rotate-6">
-                    <QrCode className="w-8 h-8 text-orange-500" />
-                  </div>
-                  {user?.uid === event.createdBy && (
-                    <button
-                      onClick={(e) => handleDeleteEvent(e, event.id, event.createdBy)}
-                      className="p-3 text-neutral-300 dark:text-neutral-600 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  )}
-                </div>
-                
-                <div className="space-y-3">
-                  <h3 className="text-3xl font-black group-hover:text-orange-500 transition-colors dark:text-white leading-[0.95] tracking-tighter">
-                    {event.name}
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] text-neutral-500 dark:text-neutral-400 flex items-center gap-1.5">
-                      <CalendarIcon className="w-3 h-3" />
-                      {event.date || 'TBA'}
-                    </div>
-                    {event.location && (
-                      <div className="px-3 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl text-[9px] font-black uppercase tracking-[0.15em] text-neutral-500 dark:text-neutral-400">
-                        {event.location}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="relative z-10 flex items-center justify-between pt-6 border-t border-neutral-100 dark:border-neutral-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center text-[11px] font-black text-white shadow-lg shadow-orange-200 dark:shadow-none">
-                    {event.creatorName?.charAt(0) || 'A'}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-black dark:text-white">{event.creatorName?.split(' ')[0] || 'Anonymous'}</span>
-                    <span className="text-[9px] font-bold text-neutral-400 uppercase tracking-widest">Organizer</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-center w-12 h-12 rounded-full bg-black dark:bg-white text-white dark:text-black group-hover:scale-110 transition-all duration-500 shadow-xl">
-                  <ArrowRight className="w-5 h-5" />
-                </div>
-              </div>
-              
-              {/* Decorative background element */}
-              <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-orange-500/5 rounded-full blur-[80px] group-hover:bg-orange-500/10 transition-colors duration-700" />
-            </motion.div>
-          ))}
-          
-          {!loadingEvents && events.length === 0 && (
-            <div className="col-span-full py-32 text-center space-y-8 glass rounded-[5rem] border-4 border-dashed border-neutral-100 dark:border-neutral-800">
-              <div className="p-10 bg-neutral-50 dark:bg-neutral-800 w-fit mx-auto rounded-full">
-                <CameraIcon className="w-20 h-20 text-neutral-200 dark:text-neutral-700" />
-              </div>
-              <div className="space-y-4">
-                <p className="text-4xl font-black text-neutral-400 dark:text-neutral-500 tracking-tighter">No active galleries</p>
-                <p className="text-xl text-neutral-400 dark:text-neutral-500 font-medium">Be the first to create a shared memory space.</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
         {showDeleteConfirm && (

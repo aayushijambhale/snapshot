@@ -4,7 +4,8 @@ import { useDropzone } from 'react-dropzone';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { Upload, X, Image as ImageIcon, ArrowLeft, CheckCircle2, Tag, Type, Loader2, Settings, AlertCircle, Clock, RefreshCw } from 'lucide-react';
+import { useGoogleDrive } from '../context/GoogleDriveContext';
+import { Upload, X, Image as ImageIcon, ArrowLeft, CheckCircle2, Tag, Type, Loader2, Settings, AlertCircle, Clock, RefreshCw, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import imageCompression from 'browser-image-compression';
@@ -23,6 +24,7 @@ export function UploadPhoto() {
   const { eventId } = useParams();
   const navigate = useNavigate();
   const { user, login } = useAuth();
+  const { isConnected, uploadFile } = useGoogleDrive();
   const [photoData, setPhotoData] = useState<PhotoMetadata[]>([]);
   const [uploading, setUploading] = useState(false);
   const [overallProgress, setOverallProgress] = useState(0);
@@ -157,6 +159,34 @@ export function UploadPhoto() {
           likes: [],
           comments: []
         });
+
+        // Upload to Google Drive if connected and event has a folder
+        if (isConnected && eventData?.driveFolderId) {
+          const uploadWithRetry = async (retries = 3) => {
+            for (let attempt = 1; attempt <= retries; attempt++) {
+              try {
+                await uploadFile(
+                  `${photo.file.name.split('.')[0]}_${Date.now()}.jpg`,
+                  base64,
+                  'image/jpeg',
+                  eventData.driveFolderId
+                );
+                return; // Success
+              } catch (err) {
+                console.error(`Drive upload attempt ${attempt} failed:`, err);
+                if (attempt === retries) throw err;
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+              }
+            }
+          };
+
+          try {
+            await uploadWithRetry();
+          } catch (err) {
+            console.error('Failed to upload to Drive after retries:', err);
+            toast.error(`Drive sync failed for ${photo.file.name}`);
+          }
+        }
         
         setPhotoData(prev => prev.map(p => p.id === photo.id ? { ...p, status: 'done', progress: 100 } : p));
         successCount++;
@@ -206,12 +236,12 @@ export function UploadPhoto() {
   return (
     <div className="max-w-3xl mx-auto space-y-10 pb-32 px-4 sm:px-6">
       <div className="space-y-3">
-        <Link to={`/event/${eventId}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-neutral-100 dark:bg-neutral-800 text-[10px] font-black uppercase tracking-widest text-neutral-500 hover:text-orange-500 transition-all">
+        <Link to={`/event/${eventId}`} className="btn-secondary px-4 py-2 text-[10px] uppercase tracking-widest w-fit">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Gallery
         </Link>
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tighter dark:text-white">Upload <span className="gradient-text">Moments.</span></h1>
-          <p className="text-base text-neutral-500 dark:text-neutral-400 font-medium tracking-tight">Add your captures to the shared gallery.</p>
+          <h1 className="text-5xl font-black tracking-tighter dark:text-white">Upload <span className="gradient-text">Moments.</span></h1>
+          <p className="text-lg text-neutral-500 dark:text-neutral-400 font-medium tracking-tight">Add your captures to the shared gallery.</p>
         </div>
       </div>
 
@@ -511,12 +541,10 @@ export function UploadPhoto() {
                 <motion.button
                   initial={{ y: 100 }}
                   animate={{ y: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
                   onClick={handleUpload}
-                  className="w-full py-5 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black text-xl hover:shadow-2xl transition-all shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-center gap-3.5 group"
+                  className="btn-primary w-full py-5 text-xl shadow-[0_20px_50px_rgba(0,0,0,0.2)] group"
                 >
-                  <div className="p-1.5 bg-orange-500 rounded-lg group-hover:rotate-12 transition-transform">
+                  <div className="p-1.5 bg-white/20 rounded-lg group-hover:rotate-12 transition-transform">
                     <Upload className="w-5 h-5 text-white" />
                   </div>
                   Upload {photoData.length} Photos
