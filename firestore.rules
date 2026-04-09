@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        (request.auth.token.email == "aayushijambhale@gmail.com" && request.auth.token.email_verified == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') == 'admin')
+      );
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /events/{eventId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && (
+        resource.data.createdBy == request.auth.uid || 
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
+
+      match /photos/{photoId} {
+        allow read: if true;
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && (
+          resource.data.uploadedBy == request.auth.uid || 
+          isAdmin() ||
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'comments'])
+        );
+        allow delete: if isAuthenticated() && (resource.data.uploadedBy == request.auth.uid || isAdmin());
+      }
+    }
+
+    match /{path=**}/photos/{photoId} {
+      allow read: if isAuthenticated() && (resource.data.uploadedBy == request.auth.uid || isAdmin());
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isOwner(userId) && request.resource.data.get('role', 'user') == 'user';
+      allow update: if (isOwner(userId) && request.resource.data.get('role', 'user') == resource.data.get('role', 'user')) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /activity/{activityId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /user_stats/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+  }
+}

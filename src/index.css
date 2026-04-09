@@ -1,13 +1,77 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  --color-primary: #f97316;
+  --color-secondary: #7c3aed;
+  --color-accent: #0ea5e9;
+  
+  --radius-3xl: 1.5rem;
+  --radius-4xl: 2rem;
+  --radius-5xl: 3rem;
+  
+  --shadow-premium: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glass: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --shadow-inner-glow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 @layer base {
   body {
-    @apply antialiased;
+    @apply font-sans antialiased selection:bg-orange-100 selection:text-orange-900 bg-neutral-50 text-neutral-900 transition-colors duration-300;
   }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display tracking-tight leading-[0.9];
+  }
+}
+
+@layer components {
+  .editorial-title {
+    @apply font-display text-[15vw] sm:text-[12vw] font-black uppercase tracking-tighter leading-[0.8] mb-8;
+  }
+
+  .micro-label {
+    @apply text-[10px] font-black uppercase tracking-[0.2em] text-neutral-400;
+  }
+
+  .glass {
+    @apply bg-white/70 backdrop-blur-xl border border-white/20 shadow-glass;
+  }
+  
+  .glass-dark {
+    @apply bg-black/40 backdrop-blur-xl border border-white/10 shadow-2xl;
+  }
+  
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-br from-orange-500 via-rose-500 to-purple-600;
+  }
+  
+  .premium-card {
+    @apply bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1;
+  }
+
+  .bento-grid {
+    @apply grid grid-cols-1 md:grid-cols-12 gap-6;
+  }
+
+  .bento-item {
+    @apply bg-white dark:bg-neutral-900 rounded-[2.5rem] border border-neutral-100 dark:border-neutral-800 shadow-premium hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 p-8 flex flex-col justify-between overflow-hidden relative;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-neutral-200 rounded-full hover:bg-neutral-300 transition-colors;
 }
