@@ -4,7 +4,11 @@ pipeline {
     environment {
         COMPOSE_PROJECT_NAME = "snapshot_ci_${env.BUILD_ID}"
     }
-
+stage('Check Compose File') {
+    steps {
+        bat 'type docker-compose.yml'
+    }
+}
     stages {
 
         stage('Checkout') {
