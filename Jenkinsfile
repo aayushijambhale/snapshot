@@ -4,16 +4,18 @@ pipeline {
     environment {
         COMPOSE_PROJECT_NAME = "snapshot_ci_${env.BUILD_ID}"
     }
-stage('Check Compose File') {
-    steps {
-        bat 'type docker-compose.yml'
-    }
-}
+
     stages {
 
         stage('Checkout') {
             steps {
                 checkout scm
+            }
+        }
+
+        stage('Check Compose File') {
+            steps {
+                bat 'type docker-compose.yml'
             }
         }
 
@@ -48,11 +50,7 @@ stage('Check Compose File') {
         stage('Test & Verify') {
             steps {
                 echo 'Verifying containers...'
-
-                // wait for services
                 sleep time: 15, unit: 'SECONDS'
-
-                // check running containers
                 bat 'docker ps'
             }
         }
