@@ -79,13 +79,15 @@ async function startServer() {
     const url = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: [
-        'https://www.googleapis.com/auth/drive.file',
-        'https://www.googleapis.com/auth/userinfo.profile',
-        'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/generative-language'
+        'openid',
+        'profile',
+        'email',
+        'https://www.googleapis.com/auth/drive.file'
       ],
-      prompt: 'consent'
+      prompt: 'consent',
+      include_granted_scopes: true
     });
+    console.log('[OAuth] Generated auth URL');
     res.json({ url });
   });
 
@@ -97,6 +99,17 @@ async function startServer() {
 
     try {
       const tokens = JSON.parse(tokensStr);
+      
+      // Handle both full token objects and access-token-only format
+      if (!tokens.access_token) {
+        return res.status(401).json({ error: 'No valid access token' });
+      }
+      
+      const oauth2Client = new google.auth.OAuth2(
+        process.env.GOOGLE_CLIENT_ID,
+        process.env.GOOGLE_CLIENT_SECRET,
+        `${process.env.APP_URL || 'http://localhost:3000'}/auth/callback`
+      );
       oauth2Client.setCredentials(tokens);
       
       const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
@@ -119,10 +132,47 @@ async function startServer() {
     res.json({ success: true });
   });
 
+  app.post('/api/auth/set-drive-token', (req, res) => {
+    const { accessToken } = req.body;
+    if (!accessToken) {
+      return res.status(400).json({ error: 'Missing accessToken' });
+    }
+    
+    // Store access token in cookies for Drive API operations
+    const tokens = { access_token: accessToken };
+    res.cookie('google_tokens', JSON.stringify(tokens), {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+    
+    console.log('[Auth] Drive token stored in cookies');
+    res.json({ success: true });
+  });
+
   app.get(['/auth/callback', '/auth/callback/'], async (req, res) => {
     const { code } = req.query;
     try {
       const { tokens } = await oauth2Client.getToken(code as string);
+      
+      console.log('[OAuth] Token Response Keys:', Object.keys(tokens));
+      console.log('[OAuth] id_token present:', !!tokens.id_token, tokens.id_token ? `(length: ${tokens.id_token.length})` : '');
+      console.log('[OAuth] access_token present:', !!tokens.access_token, tokens.access_token ? `(length: ${tokens.access_token.length})` : '');
+      console.log('[OAuth] token_type:', tokens.token_type);
+      console.log('[OAuth] expiry_date:', tokens.expiry_date);
+      
+      if (!tokens.access_token) {
+        console.error('OAuth Error: No access_token in response');
+        return res.status(500).send('Authentication failed: Unable to get access token.');
+      }
+      
+      if (!tokens.id_token) {
+        console.error('OAuth Error: No id_token in response. This OAuth client may not have ID token enabled.');
+        console.error('Solution: Ensure the OAuth client is authorized for OpenID Connect and the redirect_uri is registered.');
+        return res.status(500).send('Authentication failed: Unable to get ID token. Check server logs.');
+      }
       
       // Store tokens in a secure cookie
       res.cookie('google_tokens', JSON.stringify(tokens), {
@@ -140,7 +190,8 @@ async function startServer() {
               if (window.opener) {
                 window.opener.postMessage({ 
                   type: 'GOOGLE_AUTH_SUCCESS',
-                  idToken: ${JSON.stringify(tokens.id_token)}
+                  idToken: ${JSON.stringify(tokens.id_token)},
+                  accessToken: ${JSON.stringify(tokens.access_token)}
                 }, '*');
                 window.close();
               } else {
@@ -286,7 +337,7 @@ async function startServer() {
       console.log(`[AI] Falling back to OAuth for model: ${model}`);
       const client = await getAuthorizedClient(req, res);
       if (!client) {
-        return res.status(401).json({ error: 'Not authenticated' });
+        return res.status(500).json({ error: 'GEMINI_API_KEY is required for AI requests in this deployment' });
       }
 
       const { token } = await client.getAccessToken();

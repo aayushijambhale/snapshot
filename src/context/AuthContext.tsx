@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithCredential, GoogleAuthProvider, signOut, updateProfile as firebaseUpdateProfile } from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, updateProfile as firebaseUpdateProfile } from 'firebase/auth';
 import { auth } from '../firebase';
 import { toast } from 'sonner';
 
@@ -43,59 +43,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    // Listen for auth success messages from popup
-    const handleMessage = async (event: MessageEvent) => {
-      if (event.data?.type === 'GOOGLE_AUTH_SUCCESS' && event.data.idToken) {
-        try {
-          const credential = GoogleAuthProvider.credential(event.data.idToken);
-          await signInWithCredential(auth, credential);
-          toast.success('Logged in with Google!');
-        } catch (error) {
-          console.error('Firebase Auth Error:', error);
-          toast.error('Failed to sync with database');
-        }
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
     return () => {
       unsubscribe();
-      window.removeEventListener('message', handleMessage);
     };
   }, []);
 
   const login = async () => {
     try {
-      const response = await fetch('/api/auth/google/url', { credentials: 'include' });
-      const { url } = await response.json();
+      const provider = new GoogleAuthProvider();
+      provider.addScope('profile');
+      provider.addScope('email');
+      provider.addScope('https://www.googleapis.com/auth/drive.file');
       
-      const width = 600;
-      const height = 700;
-      const left = window.screenX + (window.outerWidth - width) / 2;
-      const top = window.screenY + (window.outerHeight - height) / 2;
+      const result = await signInWithPopup(auth, provider);
       
-      const authWindow = window.open(
-        url, 
-        'google_auth', 
-        `width=${width},height=${height},left=${left},top=${top}`
-      );
+      // Get the OAuth credential to extract the access token
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const accessToken = credential?.accessToken;
       
-      if (!authWindow) {
-        toast.error('Popup blocked. Please allow popups for this site.');
-        return;
+      if (accessToken) {
+        // Send access token to server to store in cookies
+        await fetch('/api/auth/set-drive-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken }),
+          credentials: 'include'
+        });
+        console.log('[Auth] Drive token stored on server');
       }
-
-      // Poll for window close to check session
-      const pollTimer = setInterval(async () => {
-        if (authWindow.closed) {
-          clearInterval(pollTimer);
-          await checkServerSession();
-        }
-      }, 500);
-
-    } catch (error) {
-      console.error('Login Error:', error);
-      toast.error('Failed to initiate login');
+      
+      console.log('[Auth] Successfully signed in:', result.user.email);
+      toast.success('Logged in with Google!');
+      
+      // Verify server session is updated
+      await checkServerSession();
+    } catch (error: any) {
+      console.error('Login Error:', error?.message, error?.code);
+      if (error.code === 'auth/popup-blocked') {
+        toast.error('Popup blocked. Please allow popups for this site.');
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        // User cancelled, don't show error
+      } else {
+        toast.error('Failed to login with Google');
+      }
     }
   };
 
