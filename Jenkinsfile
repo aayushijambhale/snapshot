@@ -15,6 +15,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 echo 'Building Docker images using docker-compose...'
+                // Create .env file from .env.example so docker-compose doesn't fail
+                bat 'copy .env.example .env'
                 // Using bat for Windows Jenkins node
                 bat 'docker-compose build'
             }
