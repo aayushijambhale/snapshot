@@ -6,31 +6,49 @@ pipeline {
     }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
+        stage('Prepare Environment') {
+            steps {
+                echo 'Preparing environment...'
+                bat 'copy .env.example .env'
+            }
+        }
+
+        stage('Cleanup Old Containers') {
+            steps {
+                echo 'Cleaning old containers...'
+                bat 'docker-compose down --remove-orphans'
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
-                echo 'Building Docker images using docker-compose...'
-                // Create .env file from .env.example so docker-compose doesn't fail
-                bat 'copy .env.example .env'
-                // Using bat for Windows Jenkins node
+                echo 'Building Docker images...'
                 bat 'docker-compose build'
+            }
+        }
+
+        stage('Run Containers') {
+            steps {
+                echo 'Starting containers...'
+                bat 'docker-compose up -d'
             }
         }
 
         stage('Test & Verify') {
             steps {
-                echo 'Starting up containers to verify they can run...'
-                bat 'docker-compose up -d'
-                
-                // Wait for the containers to fully start
+                echo 'Verifying containers...'
+
+                // wait for services
                 sleep time: 15, unit: 'SECONDS'
-                
-                // Check running containers
+
+                // check running containers
                 bat 'docker ps'
             }
         }
@@ -39,14 +57,14 @@ pipeline {
     post {
         always {
             echo 'Cleaning up docker containers...'
-            bat 'docker-compose down'
-            
-            // Clean the workspace to prevent permission issues on next run
+            bat 'docker-compose down --remove-orphans'
             cleanWs()
         }
+
         success {
             echo 'Pipeline completed successfully!'
         }
+
         failure {
             echo 'Pipeline failed. Please check the logs.'
         }
