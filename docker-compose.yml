@@ -1,7 +1,6 @@
 services:
   mongodb:
     image: mongo:latest
-    container_name: snapshot-mongodb
     ports:
       - "27017:27017"
     restart: unless-stopped
