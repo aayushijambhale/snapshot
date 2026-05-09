@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   app.use(express.json({ limit: '50mb' }));
   app.use(cookieParser());
@@ -142,8 +142,8 @@ async function startServer() {
     const tokens = { access_token: accessToken };
     res.cookie('google_tokens', JSON.stringify(tokens), {
       httpOnly: true,
-      secure: true,
-      sameSite: 'none',
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
@@ -177,8 +177,8 @@ async function startServer() {
       // Store tokens in a secure cookie
       res.cookie('google_tokens', JSON.stringify(tokens), {
         httpOnly: true,
-        secure: true,
-        sameSite: 'none',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         path: '/',
         maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
       });
@@ -213,7 +213,10 @@ async function startServer() {
     
     try {
       const drive = await getDriveClient(req, res);
-      if (!drive) return res.status(401).json({ error: 'Not authenticated' });
+      if (!drive) {
+        console.error('[Drive] Create Folder failed: No authorized client found');
+        return res.status(401).json({ error: 'Google Drive authorization missing. Please re-login.' });
+      }
 
       const fileMetadata = {
         name: name,

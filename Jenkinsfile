@@ -2,7 +2,8 @@ pipeline {
     agent any
 
     environment {
-        COMPOSE_PROJECT_NAME = "snapshot_ci_${env.BUILD_ID}"
+        // Fixed project name so cleanup always targets the same containers across builds
+        COMPOSE_PROJECT_NAME = "snapshot"
     }
 
     stages {
