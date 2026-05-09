@@ -1,7 +1,6 @@
 services:
   mongodb:
     image: mongo:latest
-    container_name: snapshot-mongodb
     ports:
       - "27017:27017"
     restart: unless-stopped
@@ -10,7 +9,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: snapshot-app
+ 
     ports:
       - "3000:3000"
       - "8000:8000"
