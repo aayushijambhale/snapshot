@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
 import { generateEventDescription } from '../lib/gemini';
 import { useDropzone } from 'react-dropzone';
+import { QRSection } from '../components/QRSection';
 
 export function Home() {
   const { user, login, isServerAuthenticated } = useAuth();
@@ -447,6 +448,11 @@ export function Home() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* QR Access Section */}
+      <section className="container mx-auto px-4 sm:px-6">
+        <QRSection />
       </section>
 
       {/* Bento Grid Features */}

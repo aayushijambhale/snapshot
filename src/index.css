@@ -1,89 +1,91 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&family=Outfit:wght@100;200;300;400;500;600;700;800;900&display=swap');
 
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
-  
-  --color-primary: #f97316;
-  --color-secondary: #7c3aed;
-  --color-accent: #0ea5e9;
-  
-  --radius-3xl: 1.5rem;
-  --radius-4xl: 2rem;
-  --radius-5xl: 3rem;
-  
-  --shadow-premium: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 4px 10px -5px rgba(0, 0, 0, 0.04);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.03);
-  --shadow-inner-glow: inset 0 1px 1px 0 rgba(255, 255, 255, 0.05);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: #6366f1; /* Indigo 500 */
+  --primary-glow: rgba(99, 102, 241, 0.15);
+  --secondary: #a855f7; /* Purple 500 */
+  --accent: #06b6d4; /* Cyan 500 */
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.2);
 }
 
-@layer base {
-  body {
-    @apply font-sans antialiased selection:bg-orange-100 selection:text-orange-900 bg-[#FAFAFA] text-neutral-900 transition-colors duration-300;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-display tracking-tight;
-  }
+.dark {
+  --glass-bg: rgba(15, 15, 20, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.05);
+}
+
+body {
+  @apply font-sans bg-[#F8F9FB] dark:bg-[#050507] text-slate-900 dark:text-slate-100 antialiased selection:bg-indigo-500/30;
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: 'Outfit', sans-serif;
 }
 
 @layer components {
-  .editorial-title {
-    @apply font-display text-[12vw] sm:text-[10vw] font-black uppercase tracking-tighter leading-[0.85] mb-6;
+  .glass-card {
+    @apply bg-white/70 dark:bg-[#0F0F14]/60 backdrop-blur-2xl border border-white/20 dark:border-white/5 shadow-2xl shadow-black/5;
   }
 
-  .micro-label {
-    @apply text-[10px] font-bold uppercase tracking-[0.15em] text-neutral-400;
+  .premium-gradient {
+    @apply bg-gradient-to-br from-indigo-600 via-purple-600 to-cyan-500;
   }
 
-  .glass {
-    @apply bg-white/80 backdrop-blur-xl border border-white/40 shadow-glass;
-  }
-  
-  .glass-dark {
-    @apply bg-neutral-900/60 backdrop-blur-xl border border-white/5 shadow-2xl;
-  }
-  
   .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-br from-orange-500 to-rose-600;
-  }
-  
-  .premium-card {
-    @apply bg-white dark:bg-neutral-900 rounded-3xl border border-neutral-200/50 dark:border-neutral-800 shadow-premium hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5;
-  }
-
-  .bento-grid {
-    @apply grid grid-cols-1 md:grid-cols-12 gap-6 sm:gap-8;
-  }
-
-  .bento-item {
-    @apply bg-white dark:bg-neutral-900 rounded-[2rem] border border-neutral-200/50 dark:border-neutral-800 shadow-premium hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5 p-8 sm:p-10 flex flex-col justify-between overflow-hidden relative;
-  }
-
-  .input-premium {
-    @apply w-full px-6 py-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 outline-none transition-all duration-300 placeholder:text-neutral-400;
+    @apply text-transparent bg-clip-text bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400 font-black;
   }
 
   .btn-primary {
-    @apply px-8 py-4 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-2xl shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2;
+    @apply relative px-8 py-4 bg-indigo-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl overflow-hidden transition-all hover:scale-[1.02] active:scale-95 shadow-lg shadow-indigo-500/25;
   }
 
-  .btn-secondary {
-    @apply px-8 py-4 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-800 text-neutral-900 dark:text-white font-semibold rounded-2xl transition-all duration-300 active:scale-[0.98] flex items-center justify-center gap-2;
+  .btn-glass {
+    @apply px-8 py-4 glass-card text-slate-900 dark:text-white font-black text-xs uppercase tracking-widest rounded-2xl transition-all hover:bg-white/90 dark:hover:bg-white/10;
+  }
+
+  .micro-label {
+    @apply text-[10px] font-black uppercase tracking-[0.3em];
+  }
+
+  /* Masonry Layout Helper */
+  .masonry-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-auto-rows: 10px;
+    gap: 20px;
+  }
+
+  .masonry-item {
+    grid-row-end: span 20;
+  }
+
+  .masonry-item-tall {
+    grid-row-end: span 30;
+  }
+
+  .masonry-item-short {
+    grid-row-end: span 15;
   }
 }
 
-/* Custom Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
+/* Animations */
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
+.animate-shimmer {
+  animation: shimmer 2s infinite;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-neutral-200 rounded-full hover:bg-neutral-300 transition-colors;
+.mesh-bg {
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(225,39%,30%,1) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(339,49%,30%,1) 0, transparent 50%);
 }

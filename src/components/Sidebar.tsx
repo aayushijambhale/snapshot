@@ -12,7 +12,8 @@ import {
   Home,
   PlusCircle,
   Bell,
-  LogOut
+  LogOut,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -20,11 +21,14 @@ import { useAuth } from '../context/AuthContext';
 export function Sidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, role } = useAuth();
 
   const navItems = [
     { icon: Home, label: 'Home', path: '/' },
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/client' },
+    ...(role === 'organizer' ? [
+      { icon: Camera, label: 'Studio', path: '/photographer' },
+      { icon: LayoutDashboard, label: 'Admin', path: '/admin' },
+    ] : []),
     { icon: Sparkles, label: 'AI Lab', path: '/ai-lab' },
     { icon: User, label: 'Profile', path: '/profile' },
   ];
@@ -34,37 +38,37 @@ export function Sidebar() {
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isCollapsed ? '72px' : '240px' }}
-      className="hidden lg:flex flex-col h-screen sticky top-0 bg-white dark:bg-neutral-950 border-r border-neutral-100 dark:border-neutral-800 z-40 transition-all duration-500 ease-in-out"
+      animate={{ width: isCollapsed ? '72px' : '280px' }}
+      className="hidden lg:flex flex-col h-screen sticky top-0 bg-white dark:bg-[#050507] border-r border-neutral-100 dark:border-white/5 z-40 transition-all duration-500 ease-in-out"
     >
       {/* Logo Section */}
-      <div className="p-6 flex items-center justify-between">
+      <div className="p-8 flex items-center justify-between">
         <AnimatePresence mode="wait">
           {!isCollapsed && (
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex items-center gap-2.5"
+              className="flex items-center gap-3"
             >
-              <div className="p-1.5 bg-orange-500 rounded-lg shadow-lg shadow-orange-200 dark:shadow-none rotate-3">
-                <Camera className="w-4 h-4 text-white" />
+              <div className="p-2.5 bg-indigo-600 rounded-xl shadow-xl shadow-indigo-500/30 rotate-3 group cursor-pointer hover:rotate-12 transition-transform">
+                <Camera className="w-5 h-5 text-white" />
               </div>
-              <span className="font-black text-xl tracking-tighter dark:text-white">Snap<span className="text-orange-500">Search</span></span>
+              <span className="font-black text-2xl tracking-tighter text-black dark:text-white">Lens<span className="text-indigo-600">Link</span></span>
             </motion.div>
           )}
         </AnimatePresence>
         
         <button 
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className="p-2 hover:bg-neutral-50 dark:hover:bg-neutral-900 rounded-lg transition-all text-neutral-400 hover:text-orange-500 border border-transparent hover:border-neutral-100 dark:hover:border-neutral-800"
+          className="p-2.5 hover:bg-neutral-100 dark:hover:bg-white/5 rounded-xl transition-all text-neutral-400 hover:text-indigo-600 border border-transparent"
         >
-          {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
       </div>
 
       {/* Navigation Items */}
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-4 py-6 space-y-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -72,20 +76,20 @@ export function Sidebar() {
               key={item.path}
               to={item.path}
               className={`
-                flex items-center gap-3.5 p-3 rounded-xl transition-all group relative
+                flex items-center gap-4 p-4 rounded-[1.25rem] transition-all group relative
                 ${isActive 
-                  ? 'bg-black dark:bg-white text-white dark:text-black shadow-lg' 
-                  : 'text-neutral-400 hover:text-black dark:hover:text-white hover:bg-neutral-50 dark:hover:bg-neutral-900'}
+                  ? 'bg-indigo-600 text-white shadow-2xl shadow-indigo-500/40' 
+                  : 'text-neutral-500 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/5'}
               `}
             >
-              <item.icon className={`w-4.5 h-4.5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? '' : 'opacity-60 group-hover:opacity-100'}`} />
+              <item.icon className={`w-5 h-5 shrink-0 transition-transform group-hover:scale-110 ${isActive ? '' : 'opacity-70 group-hover:opacity-100'}`} />
               <AnimatePresence mode="wait">
                 {!isCollapsed && (
                   <motion.span
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
-                    className="font-black text-[9px] uppercase tracking-[0.15em]"
+                    className="font-black text-[10px] uppercase tracking-[0.25em]"
                   >
                     {item.label}
                   </motion.span>
@@ -95,7 +99,7 @@ export function Sidebar() {
               {isActive && !isCollapsed && (
                 <motion.div
                   layoutId="active-pill"
-                  className="absolute right-3 w-1 h-1 bg-orange-500 rounded-full shadow-[0_0_10px_rgba(249,115,22,0.8)]"
+                  className="absolute right-4 w-1.5 h-1.5 bg-white rounded-full shadow-[0_0_10px_rgba(255,255,255,0.8)]"
                 />
               )}
             </Link>
@@ -104,12 +108,12 @@ export function Sidebar() {
       </nav>
 
       {/* User Profile Section */}
-      <div className="p-4 border-t border-neutral-50 dark:border-neutral-800 space-y-3">
+      <div className="p-6 border-t border-neutral-100 dark:border-white/5 space-y-4">
         <Link 
           to="/profile"
           className={`
-            flex items-center gap-2.5 p-2.5 rounded-xl transition-all group
-            ${isCollapsed ? 'justify-center' : 'bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 dark:hover:bg-neutral-800'}
+            flex items-center gap-4 p-3 rounded-2xl transition-all group
+            ${isCollapsed ? 'justify-center' : 'bg-neutral-50 dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/10'}
           `}
         >
           <div className="relative shrink-0">
@@ -118,14 +122,14 @@ export function Sidebar() {
                 src={user.photoURL} 
                 alt={user.displayName || ''} 
                 referrerPolicy="no-referrer"
-                className="w-8 h-8 rounded-lg object-cover border-2 border-white dark:border-neutral-800 shadow-md" 
+                className="w-10 h-10 rounded-xl object-cover border-2 border-white dark:border-neutral-800 shadow-xl" 
               />
             ) : (
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-black text-sm shadow-md">
+              <div className="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white font-black text-base shadow-xl">
                 {user.displayName?.charAt(0) || 'U'}
               </div>
             )}
-            <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white dark:border-neutral-900 rounded-full" />
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-[3px] border-white dark:border-[#050507] rounded-full" />
           </div>
           
           {!isCollapsed && (
@@ -134,8 +138,8 @@ export function Sidebar() {
               animate={{ opacity: 1 }}
               className="flex-1 min-w-0"
             >
-              <p className="text-[11px] font-black truncate dark:text-white">{user.displayName}</p>
-              <p className="text-[8px] font-black uppercase tracking-widest text-orange-500">Pro Member</p>
+              <p className="text-xs font-black truncate dark:text-white">{user.displayName}</p>
+              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-500">Vault Access: ON</p>
             </motion.div>
           )}
         </Link>
@@ -143,9 +147,9 @@ export function Sidebar() {
         {!isCollapsed && (
           <button
             onClick={logout}
-            className="w-full flex items-center gap-2.5 p-2.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-all font-black text-[9px] uppercase tracking-widest"
+            className="w-full flex items-center gap-4 px-4 py-4 text-neutral-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-2xl transition-all font-black text-[10px] uppercase tracking-[0.25em]"
           >
-            <LogOut className="w-3.5 h-3.5" />
+            <LogOut className="w-4 h-4" />
             Sign Out
           </button>
         )}

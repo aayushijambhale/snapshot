@@ -7,6 +7,8 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isServerAuthenticated: boolean;
+  role: 'organizer' | 'attendee';
+  setRole: (role: 'organizer' | 'attendee') => void;
   login: () => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (displayName: string, photoURL?: string) => Promise<void>;
@@ -19,6 +21,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isServerAuthenticated, setIsServerAuthenticated] = useState(false);
+  const [role, setRole] = useState<'organizer' | 'attendee'>('attendee');
 
   const checkServerSession = async () => {
     try {
@@ -33,19 +36,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      if (user) {
-        checkServerSession();
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
+      if (firebaseUser) {
+        console.log('[Auth] User detected, verifying server session...');
+        await checkServerSession();
       } else {
         setIsServerAuthenticated(false);
       }
       setLoading(false);
     });
 
-    return () => {
-      unsubscribe();
-    };
+    return () => unsubscribe();
   }, []);
 
   const login = async () => {
@@ -108,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isServerAuthenticated, login, logout, updateProfile, checkServerSession }}>
+    <AuthContext.Provider value={{ user, loading, isServerAuthenticated, role, setRole, login, logout, updateProfile, checkServerSession }}>
       {children}
     </AuthContext.Provider>
   );
